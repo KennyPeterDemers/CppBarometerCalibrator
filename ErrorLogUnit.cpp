@@ -1,0 +1,70 @@
+//---------------------------------------------------------------------------
+
+#include <vcl.h>
+#pragma hdrstop
+
+#include "ErrorLogUnit.h"
+#include "MainUnit1.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+#pragma resource "*.dfm"
+TFormErrorLog *FormErrorLog;
+
+extern bool ErrFlag;
+extern AnsiString WorkingDir;
+
+//---------------------------------------------------------------------------
+__fastcall TFormErrorLog::TFormErrorLog(TComponent* Owner)
+  : TForm(Owner)
+{
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TFormErrorLog::SaveAs1Click(TObject *Sender)
+{
+  SaveDialog1->InitialDir = WorkingDir;
+  //SaveDialog1->FileName = ScriptFileName;
+  SaveDialog1->Filter = "Text File (*.txt)|*.txt|All Files (*.*)|*.*";
+  if(SaveDialog1->Execute()) {
+    /*
+    if(FileIsReadOnly(SaveDialog1->FileName)) {
+      Application->MessageBox(
+        "Cannot Save.\nExisting File is READ ONLY.\nUse another filename or change the file attributes.",
+        "Save Script",
+        MB_OK);
+
+      return;
+    }
+    */
+
+    //PageControl1->ActivePage = TabSheetScript;
+    //WorkingDir = ExtractFileDir(SaveDialog1->FileName);
+    //ScriptFileName = ExtractFileName(SaveDialog1->FileName);
+
+    try  {
+      MemoErrorLog->Lines->SaveToFile(SaveDialog1->FileName);
+    }
+    catch(...) {
+      Application->MessageBox(
+		L"Cannot Save File.",
+        L"Save Text",
+        MB_OK);
+    }
+  }
+
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TFormErrorLog::ClearErrorFlag1Click(TObject *Sender)
+{
+  ErrFlag = false;
+  //ModalResult = mrOk;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TFormErrorLog::Exit1Click(TObject *Sender)
+{
+  ModalResult = mrOk;
+}
+//---------------------------------------------------------------------------
+

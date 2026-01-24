@@ -1,0 +1,12 @@
+#pragma once
+#include <cstring>          // strlen
+#include "SockTrace.h"      // SockTracer::Log(...)
+
+// This logs bytes only. It does NOT call SendText.
+inline void LogTxText(void* sockTag, const char* text)
+{
+    if (!sockTag || !text) return;
+    const int n = (int)std::strlen(text);
+    SockTracer::Log(true, (intptr_t)sockTag, text, n);
+}
+

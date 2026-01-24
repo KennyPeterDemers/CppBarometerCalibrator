@@ -1,0 +1,32 @@
+// SockTrace.h
+#pragma once
+#include <vector>
+#include <string>
+#include <stdint.h>
+
+struct SockTraceEntry
+{
+    uint64_t seq;
+    uint32_t tickMs;
+    uint32_t threadId;
+    intptr_t sock;       // SOCKET fits in intptr_t
+    bool isTx;           // true=TX, false=RX
+    int bytes;
+    std::string hex;     // truncated hex dump
+};
+
+class SockTracer
+{
+public:
+    static void Init(size_t maxEntries = 5000, size_t maxBytesToDump = 256);
+    static void Log(bool isTx, intptr_t sock, const void* data, int bytes);
+    static const std::vector<SockTraceEntry>& Entries();
+    static void DumpToFile(const char* path); // optional
+
+		// Thread-safe copy of the current trace buffer (useful for viewing while app runs)
+		static std::vector<SockTraceEntry> Snapshot();
+
+private:
+    static void EnsureInit();
+};
+

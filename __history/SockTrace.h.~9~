@@ -1,0 +1,36 @@
+// SockTrace.h
+#pragma once
+#include <vector>
+#include <string>
+#include <stdint.h>
+
+struct SockTraceEntry
+{
+    uint64_t seq;
+    uint32_t tickMs;
+    uint32_t threadId;
+
+    std::string endpoint;   // "192.168.1.53:2101"
+    bool isTx;              // true=TX, false=RX
+    int bytes;
+
+    std::string hex;        // truncated hex dump
+};
+
+class SockTracer
+{
+public:
+    static void Init(size_t maxEntries = 5000, size_t maxBytesToDump = 256);
+
+    // DEFAULT: always include endpoint
+    static void Log(bool isTx, const char* endpoint, const void* data, int bytes);
+
+    static const std::vector<SockTraceEntry>& Entries();
+    static std::vector<SockTraceEntry> Snapshot();
+
+    static void DumpToFile(const wchar_t* path);
+
+private:
+    static void EnsureInit();
+};
+

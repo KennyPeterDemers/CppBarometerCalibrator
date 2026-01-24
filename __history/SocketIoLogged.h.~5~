@@ -1,0 +1,17 @@
+#pragma once
+
+#include <cstring>          // strlen
+#include "SockTrace.h"      // SockTracer::Log(...)
+
+#include <ScktComp.hpp>
+
+inline void SendTextLogged(TSocketWinClient* sock, const char* text)
+{
+    if (!sock || !text) return;
+
+    const int n = (int)std::strlen(text);                 // bytes (since text is char*)
+    SockTracer::Log(true, (intptr_t)sock, text, n);       // TX log (bytes)
+
+    sock->SendText(text);                                 // the real send
+}
+
