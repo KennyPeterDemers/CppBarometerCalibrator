@@ -1,10 +1,9 @@
 object FormErrorLog: TFormErrorLog
   Left = 346
   Top = 260
-  BorderStyle = bsSingle
   Caption = 'Error Log'
   ClientHeight = 292
-  ClientWidth = 274
+  ClientWidth = 400
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -50,13 +49,17 @@ object FormErrorLog: TFormErrorLog
   Position = poMainFormCenter
   TextHeight = 13
   object MemoErrorLog: TMemo
-    Left = 8
-    Top = 8
-    Width = 257
-    Height = 273
-    ScrollBars = ssBoth
+    Left = 0
+    Top = 0
+    Width = 400
+    Height = 292
+    Align = alClient
+	Constraints.MinWidth = 300
+	Constraints.MinHeight = 292
+	ScrollBars = ssBoth
     TabOrder = 0
     WordWrap = False
+    ExplicitWidth = 274
   end
   object MainMenu1: TMainMenu
     Left = 176

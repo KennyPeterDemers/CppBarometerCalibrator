@@ -1,7 +1,6 @@
 object FormTempPressLog: TFormTempPressLog
   Left = 521
   Top = 297
-  BorderStyle = bsSingle
   Caption = 'Temp-Pressure Log'
   ClientHeight = 340
   ClientWidth = 287
@@ -22,10 +21,13 @@ object FormTempPressLog: TFormTempPressLog
     Caption = 'Log Record Delay (seconds)'
   end
   object MemoTempPressLog: TMemo
-    Left = 8
-    Top = 8
-    Width = 273
-    Height = 281
+    Left = 0
+    Top = 0
+    Width = 287
+    Height = 340
+    Align = alClient
+    Constraints.MinHeight = 281
+    Constraints.MinWidth = 273
     ScrollBars = ssVertical
     TabOrder = 0
   end

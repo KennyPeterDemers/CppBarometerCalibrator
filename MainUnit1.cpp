@@ -124,39 +124,6 @@ const int ledDy =  6;
 const int ninthColLeft = baseLeft + colSpacing * 8;
 const int ninthLedLeft = ledLeft  + colSpacing * 8;
 
-static UnicodeString SendScpi5025(const UnicodeString& ip,
-                                  const UnicodeString& cmd,
-                                  int timeoutMs = 2000)
-{
-    std::unique_ptr<TIdTCPClient> c(new TIdTCPClient(nullptr));
-
-    c->Host = ip;
-    c->Port = 5025;
-
-    c->ConnectTimeout = timeoutMs;
-    c->ReadTimeout    = timeoutMs;
-
-		// keep things simple—no Nagle delays
-		c->Connect();
-		if (auto ioh = dynamic_cast<TIdIOHandlerStack*>(c->IOHandler))
-				ioh->UseNagle = false;   // Nagle OFF (TCP_NODELAY ON)
-
-		try
-    {
-        // SCPI usually needs line termination. Use CRLF to be safe.
-        c->IOHandler->Write(cmd + L"\r\n", IndyTextEncoding_UTF8());
-
-        // Read one line back (many SCPI replies are single-line)
-        UnicodeString reply = c->IOHandler->ReadLn(L"\n", c->ReadTimeout);
-
-        return reply;
-    }
-    __finally
-    {
-        if (c->Connected())
-            c->Disconnect();
-    }
-}
 
 //---------------------------------------------------------------------------
 __fastcall TForm1::TForm1(TComponent* Owner)
