@@ -15,6 +15,9 @@
 #include <Dialogs.hpp>
 #include <Mask.hpp>
 //---------------------------------------------------------------------------
+
+
+
 class TForm1 : public TForm
 {
 __published:	// IDE-managed Components
@@ -224,7 +227,7 @@ __published:	// IDE-managed Components
   void __fastcall CSpinEditPortT1ChkChange(TObject *Sender);
   void __fastcall ImageT1MouseMove(TObject *Sender, TShiftState Shift,
           int X, int Y);
-  void __fastcall OpenCalFile1Click(TObject *Sender);
+	void __fastcall OpenCalFile1Click(TObject *Sender);
   void __fastcall PageControl1Change(TObject *Sender);
   void __fastcall ButtonPrintGraphAllClick(TObject *Sender);
   void __fastcall EnableIPEdit1Click(TObject *Sender);
@@ -273,6 +276,7 @@ private:
 	TClientSocket *PcSocket;
 	TClientSocket *TcSocket;
 
+ 
 	void __fastcall PcSocketConnect(TObject *Sender, TCustomWinSocket *Socket);
 	void __fastcall PcSocketDisconnect(TObject *Sender, TCustomWinSocket *Socket);
 	void __fastcall PcSocketRead(TObject *Sender, TCustomWinSocket *Socket);
@@ -301,6 +305,7 @@ private:
   bool __fastcall PressureSet(float pressure);
 	void __fastcall TemperatureGet();
 	void __fastcall TemperatureSet(float temperature);
+	void __fastcall TemperatureSetUnits(char units);
 	void __fastcall TemperatureStop();
   void __fastcall TemperatureInit();
   void __fastcall BaroSendMsg(int Port, const char *str);

@@ -1,0 +1,260 @@
+// SockTrace.cpp
+#include "SockTrace.h"
+#include <windows.h>
+#include <stdio.h>
+
+static CRITICAL_SECTION g_cs;
+static bool g_inited = false;
+
+static size_t g_maxEntries = 5000;
+static size_t g_maxDumpBytes = 256;
+static uint64_t g_seq = 0;
+
+static std::vector<SockTraceEntry> g_entries;
+
+void SockTracer::Init(size_t maxEntries, size_t maxBytesToDump)
+{
+    if (!g_inited)
+    {
+				InitializeCriticalSection(&g_cs);
+        g_inited = true;
+    }
+    g_maxEntries = maxEntries;
+    g_maxDumpBytes = maxBytesToDump;
+    g_entries.clear();
+    g_entries.reserve(g_maxEntries);
+    g_seq = 0;
+}
+
+void SockTracer::EnsureInit()
+{
+    if (!g_inited)
+        Init();
+}
+
+
+static std::string ToHex(const uint8_t* p, size_t n)
+{
+		static const char* k = "0123456789ABCDEF";
+		std::string s;
+		s.reserve(n * 3);
+		for (size_t i = 0; i < n; i++)
+		{
+				uint8_t b = p[i];
+				s.push_back(k[b >> 4]);
+				s.push_back(k[b & 0xF]);
+				s.push_back(' ');
+		}
+		return s;
+}
+
+static std::string ToAscii(const uint8_t* p, size_t n)
+{
+		std::string s;
+		s.reserve(n);
+		for (size_t i = 0; i < n; i++)
+		{
+				const uint8_t b = p[i];
+				s.push_back((b >= 32 && b <= 126) ? (char)b : '.');
+		}
+		return s;
+}
+
+static const char* CtrlName(uint8_t b)
+{
+    switch (b)
+    {
+        case 0x1B: return "ESC";
+        case 0x0D: return "CR";
+        case 0x0A: return "LF";
+        case 0x09: return "TAB";
+        //case 0x20: return "SPACE";
+        default:   return nullptr;
+    }
+}
+
+static std::string ToAsciiNote(const uint8_t* p, size_t n)
+{
+    std::string s;
+    for (size_t i = 0; i < n; i++)
+    {
+        const char* name = CtrlName(p[i]);
+        if (!name) continue;
+
+        // add "i:NAME " tokens
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "%u:%s ", (unsigned)i, name);
+        s += buf;
+    }
+
+    // trim trailing space
+    if (!s.empty() && s.back() == ' ') s.pop_back();
+    return s;
+}
+
+void SockTracer::Log(TraceKind kind, const char* endpoint, const void* data, int bytes)
+{
+    EnsureInit();
+		if (!endpoint)
+		{
+			endpoint = "";
+		}
+		if (!data || bytes <= 0)
+		{
+			return;
+		}
+		EnterCriticalSection(&g_cs);
+
+		if (g_entries.size() >= g_maxEntries)
+		{
+			g_entries.erase(g_entries.begin());
+		}
+		 SockTraceEntry e;
+    e.seq = ++g_seq;
+    e.tickMs = GetTickCount();
+    e.threadId = GetCurrentThreadId();
+    e.endpoint = endpoint;
+		e.kind = kind;
+    e.bytes = bytes;
+
+    size_t n = (size_t)bytes;
+		if (n > g_maxDumpBytes)
+		{
+			n = g_maxDumpBytes;
+		}
+		e.hex = ToHex((const uint8_t*)data, n);
+		e.ascii = ToAscii((const uint8_t*)data, n);
+		e.asciiNote = ToAsciiNote((const uint8_t*)data, n);
+
+		if ((size_t)bytes > n)
+		{
+				e.hex += "...";
+				e.ascii += "..."; \
+		}
+    g_entries.push_back(e);
+
+    LeaveCriticalSection(&g_cs);
+}
+
+void SockTracer::Log(bool isTx, const char* endpoint, const void* data, int bytes)
+{
+    EnsureInit();
+		if (!endpoint)
+		{
+			endpoint = "";
+		}
+		if (!data || bytes <= 0)
+		{
+			return;
+		}
+		EnterCriticalSection(&g_cs);
+
+		if (g_entries.size() >= g_maxEntries)
+		{
+			g_entries.erase(g_entries.begin());
+		}
+		SockTraceEntry e;
+    e.seq = ++g_seq;
+    e.tickMs = GetTickCount();
+		e.threadId = GetCurrentThreadId();
+    e.endpoint = endpoint;
+		if (isTx == true) {
+			e.kind = TraceKind::Tx;
+		} else {
+			e.kind = TraceKind::Rx;
+		}
+    e.bytes = bytes;
+
+    size_t n = (size_t)bytes;
+		if (n > g_maxDumpBytes)
+		{
+			n = g_maxDumpBytes;
+		}
+		e.hex = ToHex((const uint8_t*)data, n);
+		e.ascii = ToAscii((const uint8_t*)data, n);
+		e.asciiNote = ToAsciiNote((const uint8_t*)data, n);
+
+		if ((size_t)bytes > n)
+		{
+				e.hex += "...";
+				e.ascii += "..."; \
+		}
+    g_entries.push_back(e);
+
+    LeaveCriticalSection(&g_cs);
+}
+
+const std::vector<SockTraceEntry>& SockTracer::Entries()
+{
+    EnsureInit();
+    return g_entries;
+}
+
+void SockTracer::DumpToFile(const wchar_t* path)
+{
+    EnsureInit();
+    EnterCriticalSection(&g_cs);
+
+    FILE* f = _wfopen(path, L"wb");
+    if (f)
+    {
+        // header
+        fprintf(f, "Seq\tDeltaMs\tEndpoint\t\tDir\tHex\tAscii\tAsciiNote\r\n");
+
+        unsigned prev = 0;
+				bool first = true;
+
+				for (const auto& e : g_entries)
+        {
+            unsigned deltaMs = first ? 0u : (unsigned)(e.tickMs - prev);
+            first = false;
+            prev = (unsigned)e.tickMs;
+						switch (e.kind) {
+							case TraceKind::Tx:
+								fprintf(f, "%llu\t%u\t%s\tTX\t%s\t%s\t\t%s\r\n",
+										(unsigned long long)e.seq,
+										deltaMs,
+										e.endpoint.c_str(),
+										e.hex.c_str(),
+										e.ascii.c_str(),
+										e.asciiNote.c_str());
+								break;
+							case TraceKind::Rx:
+								fprintf(f, "%llu\t%u\t%s\tRX\t%s\t%s\t\t%s\r\n",
+										(unsigned long long)e.seq,
+										deltaMs,
+										e.endpoint.c_str(),
+										e.hex.c_str(),
+										e.ascii.c_str(),
+										e.asciiNote.c_str());
+								break;
+							default:
+								fprintf(f, "%llu\t%u\t%s\r\n",
+										(unsigned long long)e.seq,
+										deltaMs,
+										e.endpoint.c_str());
+						}
+				}
+
+        fclose(f);
+    }
+
+    LeaveCriticalSection(&g_cs);
+}
+
+
+
+// ADD THIS CALL AT A BREAKPOINT IF I NEED TO INSPECT WHILE DEBUGGING
+// WITHOUT WAITING UNTIL THE APP ENDS
+
+//	auto snap = SockTracer::Snapshot();
+
+std::vector<SockTraceEntry> SockTracer::Snapshot()
+{
+    EnsureInit();
+    EnterCriticalSection(&g_cs);
+    std::vector<SockTraceEntry> copy = g_entries;
+    LeaveCriticalSection(&g_cs);
+    return copy;
+}
+

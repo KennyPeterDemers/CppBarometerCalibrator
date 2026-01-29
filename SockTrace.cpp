@@ -92,6 +92,27 @@ static std::string ToAsciiNote(const uint8_t* p, size_t n)
     return s;
 }
 
+void SockTracer::Log(TraceKind kind, const char* text)
+{
+    EnsureInit();
+		EnterCriticalSection(&g_cs);
+
+		if (g_entries.size() >= g_maxEntries)
+		{
+			g_entries.erase(g_entries.begin());
+		}
+		 SockTraceEntry e;
+    e.seq = ++g_seq;
+    e.tickMs = GetTickCount();
+    e.threadId = GetCurrentThreadId();
+		e.endpoint = text;
+		e.kind = kind;
+
+    g_entries.push_back(e);
+
+    LeaveCriticalSection(&g_cs);
+}
+
 void SockTracer::Log(bool isTx, const char* endpoint, const void* data, int bytes)
 {
     EnsureInit();
@@ -109,12 +130,16 @@ void SockTracer::Log(bool isTx, const char* endpoint, const void* data, int byte
 		{
 			g_entries.erase(g_entries.begin());
 		}
-		 SockTraceEntry e;
+		SockTraceEntry e;
     e.seq = ++g_seq;
     e.tickMs = GetTickCount();
-    e.threadId = GetCurrentThreadId();
+		e.threadId = GetCurrentThreadId();
     e.endpoint = endpoint;
-    e.isTx = isTx;
+		if (isTx == true) {
+			e.kind = TraceKind::Tx;
+		} else {
+			e.kind = TraceKind::Rx;
+		}
     e.bytes = bytes;
 
     size_t n = (size_t)bytes;
@@ -154,24 +179,39 @@ void SockTracer::DumpToFile(const wchar_t* path)
         fprintf(f, "Seq\tDeltaMs\tEndpoint\t\tDir\tHex\tAscii\tAsciiNote\r\n");
 
         unsigned prev = 0;
-        bool first = true;
+				bool first = true;
 
-        for (const auto& e : g_entries)
+				for (const auto& e : g_entries)
         {
             unsigned deltaMs = first ? 0u : (unsigned)(e.tickMs - prev);
             first = false;
             prev = (unsigned)e.tickMs;
-
-            fprintf(f, "%llu\t%u\t%s\t%s\t%s\t%s\t\t%s\r\n",
-                (unsigned long long)e.seq,
-                deltaMs,
-                e.endpoint.c_str(),
-                e.isTx ? "TX" : "RX",
-                e.hex.c_str(),
-                e.ascii.c_str(),
-                e.asciiNote.c_str()
-            );
-        }
+						switch (e.kind) {
+							case TraceKind::Tx:
+								fprintf(f, "%llu\t%u\t%s\tTX\t%s\t%s\t\t%s\r\n",
+										(unsigned long long)e.seq,
+										deltaMs,
+										e.endpoint.c_str(),
+										e.hex.c_str(),
+										e.ascii.c_str(),
+										e.asciiNote.c_str());
+								break;
+							case TraceKind::Rx:
+								fprintf(f, "%llu\t%u\t%s\tRX\t%s\t%s\t\t%s\r\n",
+										(unsigned long long)e.seq,
+										deltaMs,
+										e.endpoint.c_str(),
+										e.hex.c_str(),
+										e.ascii.c_str(),
+										e.asciiNote.c_str());
+								break;
+							default:
+								fprintf(f, "%llu\t%u\t%s\r\n",
+										(unsigned long long)e.seq,
+										deltaMs,
+										e.endpoint.c_str());
+						}
+				}
 
         fclose(f);
     }

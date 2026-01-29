@@ -4,6 +4,13 @@
 #include <string>
 #include <stdint.h>
 
+enum class TraceKind : uint8_t
+{
+    Tx,
+    Rx,
+    Note
+};
+
 struct SockTraceEntry
 {
     uint64_t seq;
@@ -11,7 +18,7 @@ struct SockTraceEntry
     uint32_t threadId;
 
     std::string endpoint;
-    bool isTx;
+		TraceKind kind;
     int bytes;
 
     std::string hex;
@@ -28,6 +35,7 @@ public:
 
     // DEFAULT: always include endpoint
     static void Log(bool isTx, const char* endpoint, const void* data, int bytes);
+		static void Log(TraceKind kind, const char* text);
 
     static const std::vector<SockTraceEntry>& Entries();
     static std::vector<SockTraceEntry> Snapshot();
