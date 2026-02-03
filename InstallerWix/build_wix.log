@@ -1,0 +1,19 @@
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(32) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\BarometerCalibrator.exe
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(33) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\BAROCAL.INI
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\borlndmm.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\cc32290.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\cc32290mt.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\cc32c290.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\cc32c290mt.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\cg32.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\dbxadapter.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\dbxint.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\dbxmys.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\midas.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(34) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\stdvcl40.dll
+C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(35) : verbose WIX8700: Harvested file: C:\Repos\CppBarometerCalibrator\Win32\Release\license.rtf
+wix.exe : verbose WIX9030: There will be '12' threads used to produce CAB files.
+wix.exe : verbose WIX9007: Updating file information.
+wix.exe : verbose WIX9010: Creating cabinet files.
+wix.exe : verbose WIX9015: Creating cabinet 'C:\Users\KPDem\AppData\Local\Temp\0li1jn2o.yyj\#cab1.cab'.
+wix.exe : verbose WIX9008: Generating database.

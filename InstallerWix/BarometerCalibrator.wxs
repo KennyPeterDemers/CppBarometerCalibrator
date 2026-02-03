@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package
+    Name="Barometer Calibrator"
+    Manufacturer="RM Young"
+    Version="1.0.0"
+    UpgradeCode="15ed1801-6218-4f06-ba9f-e5eadddeabe7"
+    Language="1033"
+    Scope="perMachine"
+    InstallerVersion="500">
+
+	<MediaTemplate EmbedCab="yes" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Barometer Calibrator is already installed." />
+
+	<ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+
+    <StandardDirectory Id="ProgramFilesFolder">
+      <Directory Id="INSTALLFOLDER" Name="Barometer Calibrator" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppProgramMenuFolder" Name="Barometer Calibrator" />
+    </StandardDirectory>
+
+    <!-- Everything we install goes in one Feature -->
+    <Feature Id="MainFeature" Title="Barometer Calibrator" Level="1">
+
+      <!-- Pull files from your existing Release folder via a bind path -->
+      <Files Directory="INSTALLFOLDER" Include="!(bindpath.ReleaseDir)\BarometerCalibrator.exe" />
+      <Files Directory="INSTALLFOLDER" Include="!(bindpath.ReleaseDir)\BAROCAL.ini" />
+      <Files Directory="INSTALLFOLDER" Include="!(bindpath.ReleaseDir)\*.dll" />
+      <Files Directory="INSTALLFOLDER" Include="!(bindpath.ReleaseDir)\*.rtf" />
+
+      <!-- OPTIONAL: include a Data folder (uncomment if needed)
+      <Files Directory="INSTALLFOLDER" Include="!(bindpath.ReleaseDir)\Data\**" />
+      -->
+
+      <ComponentRef Id="ShortcutComponent" />
+    </Feature>
+
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="ShortcutComponent" Guid="*">
+        <Shortcut Id="StartMenuShortcut"
+                  Directory="AppProgramMenuFolder"
+                  Name="Barometer Calibrator"
+                  Target="[INSTALLFOLDER]BarometerCalibrator.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RemoveFolder Id="RemoveProgramMenuFolder"
+                      Directory="AppProgramMenuFolder"
+                      On="uninstall" />
+        <RegistryValue Root="HKLM"
+                       Key="Software\ReliableFirmware\BarometerCalibrator"
+                       Name="Installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+  </Package>
+</Wix>

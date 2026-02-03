@@ -3,7 +3,7 @@ object Form1: TForm1
   Top = 210
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
-  Caption = 'PcSocket'
+  Caption = 'Barometer Calibrator V1.00'
   ClientHeight = 640
   ClientWidth = 722
   Color = clBtnFace

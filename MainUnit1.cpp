@@ -796,7 +796,7 @@ void __fastcall TForm1::PcSocketError(TObject *Sender, TCustomWinSocket *Socket,
 
 void __fastcall TForm1::TcSocketConnect(TObject *Sender, TCustomWinSocket *Socket)
 {
-    // Disable Nagle (TCP_NODELAY = 1)
+		// Disable Nagle (TCP_NODELAY = 1)
     int flag = 1;
 
     // One of these two will exist in your RTL; use the one that compiles:
@@ -2772,17 +2772,17 @@ void DrawGrid() {
   for(i=0; i<=10; i++) {
     x = 0;
     y = (i*h)/10;
-    c->MoveTo(x,y);
-    x = w;
-    c->LineTo(x,y);
-  }
+		c->MoveTo(x,y);
+		x = w;
+		c->LineTo(x,y);
+	}
 
   c->Pen->Color = (TColor)0;
-  x = 0;
+	x = 0;
   y = (5*h)/10;
-  c->MoveTo(x,y);
-  x = w;
-  c->LineTo(x,y);
+	c->MoveTo(x,y);
+	x = w;
+	c->LineTo(x,y);
 
 }
 
@@ -2979,46 +2979,46 @@ void __fastcall TForm1::ButtonDrawGraphClick(TObject *Sender)
 //---------------------------------------------------------------------------
 
 void __fastcall TForm1::ImageCalCheckMouseMove(TObject *Sender,
-      TShiftState Shift, int X, int Y)
+			TShiftState Shift, int X, int Y)
 {
-  int i;
-  float PressDiff, RefPress, fRange, fLoPress, fYrange;
-  float fX, fY, xMult, xOffset, yMult, yOffset;
-  char str[100];
+	int i;
+	float PressDiff, RefPress, fRange, fLoPress, fYrange;
+	float fX, fY, xMult, xOffset, yMult, yOffset;
+	char str[100];
 
-  switch(Form1->RadioGroupGraphSensorType->ItemIndex) {
-    //case 0: fRange = 700.0;
-    //        fLoPress = 400.0;
-    //        fYrange = 1.0;
-    //        break;
+	switch(Form1->RadioGroupGraphSensorType->ItemIndex) {
+		//case 0: fRange = 700.0;
+		//        fLoPress = 400.0;
+		//        fYrange = 1.0;
+		//        break;
 
-    case 0:
-    case 1: fRange = 600.0;
-            fLoPress = 500.0;
-            fYrange = 1.0;
-            break;
+		case 0:
+		case 1: fRange = 600.0;
+						fLoPress = 500.0;
+						fYrange = 1.0;
+						break;
 
-    case 2: fRange = 500.0;
-            fLoPress = 600.0;
-            fYrange = 1.0;
-            break;
+		case 2: fRange = 500.0;
+						fLoPress = 600.0;
+						fYrange = 1.0;
+						break;
 
-    case 3: fRange = 700.0;
-            fLoPress = 400.0;
-            fYrange = 1.0;
-            break;
-  }
+		case 3: fRange = 700.0;
+						fLoPress = 400.0;
+						fYrange = 1.0;
+						break;
+	}
 
 
 
-  xMult = (float)ImageCalCheck->Width/fRange; // 600.0 to 1100.0 hPa
-  yMult = -(float)ImageCalCheck->Height/fYrange; // ±0.5 hPa
-  yOffset = (float)ImageCalCheck->Height/2.0;
+	xMult = (float)ImageCalCheck->Width/fRange; // 600.0 to 1100.0 hPa
+	yMult = -(float)ImageCalCheck->Height/fYrange; // ±0.5 hPa
+	yOffset = (float)ImageCalCheck->Height/2.0;
 
-  RefPress = ((float)X)/xMult + fLoPress;
-  PressDiff = ((float)Y - yOffset)/yMult;
-  sprintf(str,"Pressure: %04.0f hPa  Difference: %02.2f hPa", RefPress, PressDiff);
-  StatusBar1->Panels->Items[2]->Text = str;
+	RefPress = ((float)X)/xMult + fLoPress;
+	PressDiff = ((float)Y - yOffset)/yMult;
+	sprintf(str,"Pressure: %04.0f hPa  Difference: %02.2f hPa", RefPress, PressDiff);
+	StatusBar1->Panels->Items[2]->Text = str;
 }
 //---------------------------------------------------------------------------
 
@@ -3175,7 +3175,7 @@ void __fastcall TForm1::PrintGraph(int PortNum) {
   //Printer()->Title = "Barometer " + EditSerialNum[CSpinEditCalCheckPort->Value - 1]->Text;
 
   Graphics::TBitmap *LogoImage = new Graphics::TBitmap;
-  LogoImage->LoadFromResourceID((int)HInstance, 1000);
+	LogoImage->LoadFromResourceID((int)HInstance, 1000);
 
   Printer()->BeginDoc();
 
