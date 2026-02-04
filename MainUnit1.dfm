@@ -3,7 +3,7 @@ object Form1: TForm1
   Top = 210
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
-  Caption = 'Barometer Calibrator V1.00'
+  Caption = 'Barometer Calibrator V1.0.0'
   ClientHeight = 640
   ClientWidth = 722
   Color = clBtnFace
@@ -788,7 +788,7 @@ object Form1: TForm1
       end
       object ButtonConnect: TButton
         Left = 130
-        Top = 213
+        Top = 214
         Width = 73
         Height = 25
         Caption = '&Connect'
@@ -842,8 +842,8 @@ object Form1: TForm1
         OnClick = ButtonSelectAllClick
       end
       object ButtonDeselectAll: TButton
-        Left = 22
-        Top = 244
+        Left = 29
+        Top = 243
         Width = 75
         Height = 25
         Caption = 'Deselect All'
@@ -1503,7 +1503,7 @@ object Form1: TForm1
   end
   object ButtonSkip: TButton
     Left = 152
-    Top = 416
+    Top = 411
     Width = 121
     Height = 25
     Hint = 'Causes current script instruction will finish immediately.'
@@ -1523,7 +1523,7 @@ object Form1: TForm1
     TabOrder = 5
   end
   object MemoMain: TMemo
-    Left = 144
+    Left = 145
     Top = 464
     Width = 305
     Height = 121
@@ -1548,7 +1548,7 @@ object Form1: TForm1
   end
   object ButtonGetCurrentValues: TButton
     Left = 304
-    Top = 416
+    Top = 413
     Width = 129
     Height = 25
     Hint = 'Port must be connected to get values.'

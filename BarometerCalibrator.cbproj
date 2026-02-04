@@ -1310,7 +1310,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='CommandsUnit1.h'">
@@ -1318,7 +1318,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='BarometerCalibratorPCH1.h'">
@@ -1326,7 +1326,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='ErrorLogUnit.cpp'">
@@ -1334,7 +1334,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='MainUnit1.h'">
@@ -1342,7 +1342,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='SockTrace.h'">
@@ -1350,7 +1350,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='MainUnit1.cpp'">
@@ -1358,7 +1358,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='CommandsUnit1.cpp'">
@@ -1366,7 +1366,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='TempPressLogUnit.h'">
@@ -1374,7 +1374,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='SocketIoLogged.h'">
@@ -1382,7 +1382,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='ErrorLogUnit.h'">
@@ -1390,7 +1390,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='SockTrace.cpp'">
@@ -1398,7 +1398,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='BarometerCalibrator.cpp'">
@@ -1406,7 +1406,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Release' And '$(FileToCompile)'=='TempPressLogUnit.cpp'">
@@ -1414,7 +1414,7 @@ $(PostBuildEvent)]]></PostBuildEvent>
         <PreBuildEventIgnoreExitCode>False</PreBuildEventIgnoreExitCode>
         <PreLinkEvent/>
         <PreLinkEventIgnoreExitCode>False</PreLinkEventIgnoreExitCode>
-        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
+        <PostBuildEvent>xcopy /Y /D &quot;C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll&quot; &quot;C:\Repos\CppBarometerCalibrator\Win32\Release\&quot;</PostBuildEvent>
         <PostBuildEventIgnoreExitCode>False</PostBuildEventIgnoreExitCode>
     </PropertyGroup>
 </Project>

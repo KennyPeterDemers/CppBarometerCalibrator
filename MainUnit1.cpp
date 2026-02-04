@@ -402,165 +402,7 @@ void __fastcall TForm1::FormClose(TObject *Sender, TCloseAction &Action)
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
-{
-  int i;
-	char str[200];
 
-	for(i=0; i<DigiCommChannels; i++) {
-
-
-    if(i<=15) CommSocket[i]->Address = EditAddr1->Text;
-		else if(i>=16 && i<32) CommSocket[i]->Address = EditAddr2->Text;
-    else if(i>=32 && i<48) CommSocket[i]->Address = EditAddr3->Text;
-    else if(i>=48 && i<64) CommSocket[i]->Address = EditAddr4->Text;
-
-    if(CommBox[i]->Checked) {
-
-			EditSerialNum[i]->Enabled = true;
-			LabelSerialNum[i]->Enabled = true;
-
-			if(Active(CommSocket[i])) CommSocket[i]->Active = false;
-
-      try {
-				CommSocket[i]->Active = true;
-      }
-      catch(...) {
-				MemoMain->Lines->Add("Cannot Connect Port " + IntToStr(i+1));
-      }
-    }
-    else {
-			EditSerialNum[i]->Enabled = false;
-			LabelSerialNum[i]->Enabled = false;
-		}
-    CommBox[i]->Enabled = false;
-		Application->ProcessMessages();
-	}
-
-	// ---- Temperature Controller (TC) connection (separate from Digi ports) ----
-	if (TcSocket) {
-		if (TcBox && TcBox->Checked) {
-			TcSocket->Address = EditAddrTC->Text;
-			TcSocket->Port = 5025; // SCPI over TCP
-
-			if (Active(TcSocket)) TcSocket->Active = false;
-
-			try {
-				TcSocket->Active = true;
-			}
-			catch(...) {
-				MemoMain->Lines->Add("Cannot Connect TC");
-				if (TcLED) TcLED->Brush->Color = clRed;
-			}
-		}
-		else {
-			if (Active(TcSocket)) TcSocket->Active = false;
-			if (TcLED) TcLED->Brush->Color = clRed;
-		}
-	}
-	if (TcBox) TcBox->Enabled = false;
-
-	// ---- Pressure Controller (PC) connection (separate from Digi ports) ----
-	if (PcSocket) {
-		//SendTextLogged("ButtonConnectClick() PcSocket is not NULL\n");
-		if (PcBox && PcBox->Checked) {
-			//SendTextLogged("ButtonConnectClick() PcBox->Checked is true\n");
-			PcSocket->Address = EditAddrPC->Text;
-			PcSocket->Port = 5025; // SCPI over TCP
-
-			//SendTextLogged(sprintf("ButtonConnectClick() PcSocket->Port %d\n", PcSocket->Port));
-			if (Active(PcSocket)) PcSocket->Active = false;
-
-			try {
-				//SendTextLogged("ButtonConnectClick() setting PcSocket->Active true\n");
-				PcSocket->Active = true;
-			}
-			catch(...) {
-				MemoMain->Lines->Add("Cannot Connect PC");
-				if (PcLED) PcLED->Brush->Color = clRed;
-				//SendTextLogged("ButtonConnectClick() Exception\n");
-			}
-		}
-		else {
-			//SendTextLogged("ButtonConnectClick() PcBox->Checked is false\n");
-			if (Active(PcSocket)) PcSocket->Active = false;
-			if (PcLED) PcLED->Brush->Color = clRed;
-		}
-	}
-	if (PcBox) PcBox->Enabled = false;
-
-	ButtonSelectAll->Enabled = false;
-	ButtonDeselectAll->Enabled = false;
-
-	ButtonConnect->Enabled = false;
-	ButtonDisconnect->Enabled = true;
-	ButtonGetCurrentValues->Enabled = true;
-	ButtonStart->Enabled = true;
-
-	EditAddr1->Enabled = false;
-	EditAddr2->Enabled = false;
-	EditAddr3->Enabled = false;
-	EditAddr4->Enabled = false;
-	EditAddrPC->Enabled = false;
-	EditAddrTC->Enabled = false;
-
-	PortMonCount = PORTMONTIMEOUT;
-
-}
-
-	//---------------------------------------------------------------------------
-
-void __fastcall TForm1::ButtonDisconnectClick(TObject *Sender)
-{
-  int i;
-
-	int result = Application->MessageBoxW(
-    L"Do you really want to Disconnect?",
-		L"Disconnect",
-    MB_YESNO);
-
-  if(result == IDNO) return;
-
-  MemoMain->Lines->Add(" ");
-
-  for(i=0; i<DigiCommChannels; i++) {
-		if(Active(CommSocket[i])) CommSocket[i]->Active = false;
-    //MemoMain->Lines->Add("Disconnect Port " + IntToStr(i+1));
-    Application->ProcessMessages();
-	}
-
-  // ---- Temperature Controller (TC) disconnect ----
-	if (Active(TcSocket)) TcSocket->Active = false;
-	if (TcLED) TcLED->Brush->Color = clRed;
-	if (TcBox) TcBox->Enabled = true;
-
-	// ---- Pressure Controller (PC) disconnect ----
-	if (Active(PcSocket)) PcSocket->Active = false;
-	if (PcLED) PcLED->Brush->Color = clRed;
-	if (PcBox) PcBox->Enabled = true;
-
-	for(i=0; i<DigiCommChannels; i++) {
-    CommBox[i]->Enabled = true;
-		EditSerialNum[i]->Enabled = true;
-		LabelSerialNum[i]->Enabled = true;
-	}
-
-  ButtonSelectAll->Enabled = true;
-	ButtonDeselectAll->Enabled = true;
-
-  ButtonConnect->Enabled = true;
-  ButtonDisconnect->Enabled = false;
-  ButtonGetCurrentValues->Enabled = false;
-
-  EditAddr1->Enabled = true;
-  EditAddr2->Enabled = true;
-  EditAddr3->Enabled = true;
-  EditAddr4->Enabled = true;
-	EditAddrPC->Enabled = true;
-	EditAddrTC->Enabled = true;
-	 //ButtonUpdateIP->Enabled = true;
-
-}
 //---------------------------------------------------------------------------
 
 void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket) {
@@ -863,12 +705,6 @@ void __fastcall TForm1::TcSocketError(TObject *Sender, TCustomWinSocket *Socket,
 
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::ButtonMainClearClick(TObject *Sender)
-{
-  MemoMain->Clear();
-}
-//---------------------------------------------------------------------------
-
 void __fastcall TForm1::ButtonMonClearClick(TObject *Sender)
 {
   MemoMonitor->Clear();
@@ -949,13 +785,6 @@ void __fastcall TForm1::TemperatureGet() {
 	}
 }
 
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::ButtonGetCurrentValuesClick(TObject *Sender)
-{
-  PressureGet();
-	TemperatureGet();
-}
 //---------------------------------------------------------------------------
 
 void __fastcall TForm1::SaveScript1Click(TObject *Sender)
@@ -1165,161 +994,6 @@ void SetScriptBar() {
 
 }
 
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::ButtonStartClick(TObject *Sender)
-{
-	int i, j, mrResult, ErrLine;
-	char str[100];
-  TDateTime MyTime;
-
-  mrResult = Application->MessageBox(
-	L"Is the Script Loaded?",
-	L"Start Script",
-		MB_YESNO);
-
-  if(mrResult == IDNO) return;
-
-	mrResult = Application->MessageBox(
-	L"Are Serial Numbers Set?",
-	L"Start Script",
-		MB_YESNO);
-
-  if(mrResult == IDNO) return;
-
-  ScriptCount = MemoScript->Lines->Count;
-  if(ScriptCount == 0) {
-		Application->MessageBox(L"The Script is Empty.", L"Start Script", MB_OK);
-		RunFlag = false;
-		return;
-	}
-
-	SetScriptBar();
-	ScriptIndex = 0;
-  SubReturnCount = 0;
-
-  ButtonStart->Enabled = false;
-  ButtonPause->Enabled = true;
-  ButtonStop->Enabled = true;
-  ButtonDisconnect->Enabled = false;
-  ButtonGetCurrentValues->Enabled = false;
-  ButtonSaveBaroRead->Enabled = false;
-  ButtonPrintBaroRead->Enabled = false;
-  ButtonDrawGraph->Enabled = false;
-  ButtonPrintGraph->Enabled = false;
-  ButtonPrintGraphAll->Enabled = false;
-  ButtonGetTable->Enabled = false;
-  ButtonAutoNum->Enabled = false;
-  CSpinEditPortT1Chk->Enabled = false;
-
-  //MemoScript->ReadOnly = true;
-
-  MemoMain->Clear();
-  FormErrorLog->MemoErrorLog->Lines->Clear();
-
-  if(!BaroFileSaved) {
-    //AskFlag = false;
-	mrResult = Application->MessageBox(
-	  L"Baro Read File has not been saved.\nSave before starting script?",
-	  L"Start Script",
-      MB_YESNO);
-
-    if(mrResult == IDYES) {
-      SaveDialog1->InitialDir = WorkingDir;
-      SaveDialog1->FileName = CalFileName;
-      SaveDialog1->Filter = "Baro Cal File (*.cal)|*.cal|All Files (*.*)|*.*";
-      if(SaveDialog1->Execute()) {
-        WorkingDir = ExtractFileDir(SaveDialog1->FileName);
-        MemoBaroReadMon->Lines->SaveToFile(SaveDialog1->FileName);
-        BaroFileSaved = true;
-      }
-    }
-  }
-
-  MemoBaroReadMon->Clear();
-  MemoBaroReadMon->Lines->Add(ScriptFileName);
-
-  BaroFileSaved = false;
-  PauseFlag = false;
-  ErrFlag = false;
-
-  ClearReadBaroArray();
-  FormTempPressLog->Enabled1->Checked = true;
-
-  RunFlag = true;
-
-  if(CheckBoxAutoTimer->Checked) {
-    TimerTime = Now();
-    TimerFlag = true;
-    CheckBoxAutoTimer->Enabled = false;
-  }
-
-  while(RunFlag) {
-    ProgressBarScript->Position = ProgressCount;
-
-    Application->ProcessMessages();
-
-    if(!PauseFlag) {
-      if(ParseLine())
-        LogError("ERROR: ParseLine(), Missing Instruction Parameter.");
-    }
-    PressureGet();
-		TemperatureGet();
-  }
-
-  if(CheckBoxAutoTimer->Checked) {
-    TimerFlag = false;
-    CheckBoxAutoTimer->Enabled = true;
-  }
-
-  FormTempPressLog->Enabled1->Checked = false;
-  ProgressBarScript->Position = 0;
-
-  CalTime = Now();
-  sprintf(str,"END %f", (double)CalTime);
-  MemoBaroReadMon->Lines->Add(str);
-
-  CalFileName = "61000 Baro " + CalTime.FormatString("yyyy-mm-dd-hh-nn-ss") + ".cal";
-  if(ConvertBaroRead()) {
-    MemoMain->Lines->Add("Conversion error.");
-  }
-
-  if(EnableScriptEdit->Checked) MemoScript->ReadOnly = false;
-  else MemoScript->ReadOnly = true;
-
-  ButtonStart->Enabled = true;
-  ButtonPause->Enabled = false;
-  ButtonStop->Enabled = false;
-  ButtonDisconnect->Enabled = true;
-  ButtonGetCurrentValues->Enabled = true;
-  ButtonSaveBaroRead->Enabled = true;
-  ButtonPrintBaroRead->Enabled = true;
-  ButtonDrawGraph->Enabled = true;
-  ButtonPrintGraph->Enabled = true;
-  ButtonPrintGraphAll->Enabled = true;
-  ButtonAutoNum->Enabled = true;
-  CSpinEditPortT1Chk->Enabled = true;
-
-	if(Active(CommSocket[CSpinEditPortT1Chk->Value-1]))
-    ButtonGetTable->Enabled = true;
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::ButtonStopClick(TObject *Sender)
-{
-  int result = Application->MessageBox(
-		L"Do you really want to Stop Script?",
-		L"Stop Script",
-        MB_YESNO);
-
-  if(result == IDNO) return;
-
-  RunFlag = false;
-  TableChkFlag = false;
-  PressureStop();
-  TemperatureStop();
-  //ButtonPause->Caption = "Pause Script";
-}
 //---------------------------------------------------------------------------
 
 void __fastcall TForm1::Exit1Click(TObject *Sender)
@@ -2227,19 +1901,6 @@ void __fastcall TForm1::ScriptCommands1Click(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::ButtonSkipClick(TObject *Sender)
-{
-  int result = Application->MessageBox(
-		L"Do you really want to Skip\nthe rest of this script command?",
-		L"Skip",
-        MB_YESNO);
-
-  if(result == IDNO) return;
-
-  SkipFlag = true;
-}
-//---------------------------------------------------------------------------
-
 void __fastcall TForm1::NewScript1Click(TObject *Sender)
 {
   PageControl1->ActivePage = TabSheetScript;
@@ -2688,21 +2349,6 @@ void __fastcall TForm1::ButtonPrintBaroReadClick(TObject *Sender)
 
 }
 //---------------------------------------------------------------------------
-
-
-void __fastcall TForm1::ButtonPauseClick(TObject *Sender)
-{
-  if(PauseFlag == false) {
-    PauseFlag = true;
-    ButtonPause->Caption = "Resume";
-  }
-  else {
-    PauseFlag = false;
-    ButtonPause->Caption = "Pause Script";
-  }
-}
-//---------------------------------------------------------------------------
-
 
 void __fastcall TForm1::MemoBaroReadMonKeyPress(TObject *Sender, char &Key)
 {
@@ -4564,31 +4210,6 @@ void __fastcall TForm1::CheckBoxOverrideClick(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::ButtonSelectAllClick(TObject *Sender)
-{
-  int i;
-
-	for (int i = 0; i < DigiCommChannels; i++) {
-		if (CommBox[i]) CommBox[i]->Checked = true;   // or false
-	}
-	if (PcBox) PcBox->Checked = true;
-	if (TcBox) TcBox->Checked = true;
-
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::ButtonDeselectAllClick(TObject *Sender)
-{
-  int i;
-
-	for (int i = 0; i < DigiCommChannels; i++) {
-		if (CommBox[i]) CommBox[i]->Checked = false;
-	}
-	if (PcBox) PcBox->Checked = false;
-	if (TcBox) TcBox->Checked = false;
-}
-//---------------------------------------------------------------------------
-
 void __fastcall TForm1::EnableBaroSendCharDelayClick(TObject *Sender)
 {
   if(EnableBaroSendCharDelay->Checked) EnableBaroSendCharDelay->Checked = false;
@@ -4698,96 +4319,10 @@ void __fastcall TForm1::ButtonSendBaroCmdClick(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
-
-void __fastcall TForm1::CSpinEditTargetPressureTimeLimitChange(
-      TObject *Sender)
-{
-  TargetPressureTimeLimit = (DWORD)CSpinEditTargetPressureTimeLimit->Value * (DWORD)1000;
-}
-//---------------------------------------------------------------------------
-
 void __fastcall TForm1::CheckBoxEnableAutoNumberClick(TObject *Sender)
 {
   if(CheckBoxEnableAutoNumber->Checked) ButtonAutoNum->Enabled = true;
   else ButtonAutoNum->Enabled = false;
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::ButtonSetPressureClick(TObject *Sender)
-{
-  float fVal = MaskEditPressure->Text.ToDouble();
-  char str[100];
-
-  if(fVal < 300.0 || fVal > 1200.0) {
-    MessageBeep(0);
-    return;
-  }
-
-  sprintf(str,"Set Pressure to %.2f hPa?", fVal);
-
-  int result = Application->MessageBoxW(UnicodeString(str).c_str(), L"Pressure Control", MB_YESNO);
-
-
-  if(result == IDNO) return;
-
-  Screen->Cursor = crHourGlass;
-  PressureInit();
-  Sleep(1000);
-  PressureSet(fVal);
-  Screen->Cursor = crDefault;
-
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::ButtonStopPressureClick(TObject *Sender)
-{
-  int result = Application->MessageBox(
-	L"Stop Pressure Controller?",
-	L"Pressure Control",
-    MB_YESNO);
-
-  if(result == IDNO) return;
-
-  PressureStop();
-
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::ButtonSetTemperatureClick(TObject *Sender)
-{
-  float fVal = MaskEditTemperature->Text.ToDouble();
-  char str[100];
-
-  if(fVal < -55.0 || fVal > 70.0) {
-    MessageBeep(0);
-    return;
-  }
-
-  sprintf(str,"Set Temperature to %.1f°C?", fVal);
-
-  int result = Application->MessageBox(UnicodeString(str).c_str(), L"Env Chamber", MB_YESNO);
-
-  if(result == IDNO) return;
-
-  Screen->Cursor = crHourGlass;
-	TemperatureInit();
-  Sleep(1000);
-	TemperatureSet(fVal);
-  Screen->Cursor = crDefault;
-
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::ButtonStopTemperatureClick(TObject *Sender)
-{
-  int result = Application->MessageBox(
-	L"Stop Temperature Controller?",
-	L"Env Chamber",
-    MB_YESNO);
-
-  if(result == IDNO) return;
-
-  TemperatureStop();
 }
 //---------------------------------------------------------------------------
 
@@ -5124,13 +4659,6 @@ void __fastcall TForm1::ButtonStartStopTimerClick(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::CheckBoxAutoTimerClick(TObject *Sender)
-{
-  if(CheckBoxAutoTimer->Checked) ButtonStartStopTimer->Enabled = false;
-  else ButtonStartStopTimer->Enabled = true;
-}
-//---------------------------------------------------------------------------
-
 bool __fastcall TForm1::Active(TClientSocket* sock)
 {
 	if ((sock != NULL) && sock->Active)
@@ -5140,17 +4668,499 @@ bool __fastcall TForm1::Active(TClientSocket* sock)
 	return false;
 }
 //---------------------------------------------------------------------------
+// CODE BEHIND - All TABS - Bottom Panel
+//---------------------------------------------------------------------------
 
-/*int __fastcall TForm1::ScpiSendLine(TCustomWinSocket* sock, const AnsiString& cmd)
+void __fastcall TForm1::ButtonStartClick(TObject *Sender)
 {
-    if (!sock || !sock->Connected) return -1;
+	int i, j, mrResult, ErrLine;
+	char str[100];
+  TDateTime MyTime;
 
-		AnsiString wire = cmd + "\r";      // SCPI line termination
+  mrResult = Application->MessageBox(
+	L"Is the Script Loaded?",
+	L"Start Script",
+		MB_YESNO);
 
-    return SendTextLogged(sock, wire.c_str());  // <-- MATCHES your template
-}  */
+  if(mrResult == IDNO) return;
+
+	mrResult = Application->MessageBox(
+	L"Are Serial Numbers Set?",
+	L"Start Script",
+		MB_YESNO);
+
+  if(mrResult == IDNO) return;
+
+  ScriptCount = MemoScript->Lines->Count;
+  if(ScriptCount == 0) {
+		Application->MessageBox(L"The Script is Empty.", L"Start Script", MB_OK);
+		RunFlag = false;
+		return;
+	}
+
+	SetScriptBar();
+	ScriptIndex = 0;
+  SubReturnCount = 0;
+
+  ButtonStart->Enabled = false;
+  ButtonPause->Enabled = true;
+  ButtonStop->Enabled = true;
+  ButtonDisconnect->Enabled = false;
+  ButtonGetCurrentValues->Enabled = false;
+  ButtonSaveBaroRead->Enabled = false;
+  ButtonPrintBaroRead->Enabled = false;
+  ButtonDrawGraph->Enabled = false;
+  ButtonPrintGraph->Enabled = false;
+  ButtonPrintGraphAll->Enabled = false;
+  ButtonGetTable->Enabled = false;
+  ButtonAutoNum->Enabled = false;
+  CSpinEditPortT1Chk->Enabled = false;
+
+  //MemoScript->ReadOnly = true;
+
+  MemoMain->Clear();
+  FormErrorLog->MemoErrorLog->Lines->Clear();
+
+  if(!BaroFileSaved) {
+    //AskFlag = false;
+	mrResult = Application->MessageBox(
+	  L"Baro Read File has not been saved.\nSave before starting script?",
+	  L"Start Script",
+      MB_YESNO);
+
+    if(mrResult == IDYES) {
+      SaveDialog1->InitialDir = WorkingDir;
+      SaveDialog1->FileName = CalFileName;
+      SaveDialog1->Filter = "Baro Cal File (*.cal)|*.cal|All Files (*.*)|*.*";
+      if(SaveDialog1->Execute()) {
+        WorkingDir = ExtractFileDir(SaveDialog1->FileName);
+        MemoBaroReadMon->Lines->SaveToFile(SaveDialog1->FileName);
+        BaroFileSaved = true;
+      }
+    }
+  }
+
+  MemoBaroReadMon->Clear();
+  MemoBaroReadMon->Lines->Add(ScriptFileName);
+
+  BaroFileSaved = false;
+  PauseFlag = false;
+  ErrFlag = false;
+
+  ClearReadBaroArray();
+  FormTempPressLog->Enabled1->Checked = true;
+
+  RunFlag = true;
+
+  if(CheckBoxAutoTimer->Checked) {
+    TimerTime = Now();
+    TimerFlag = true;
+    CheckBoxAutoTimer->Enabled = false;
+  }
+
+  while(RunFlag) {
+    ProgressBarScript->Position = ProgressCount;
+
+    Application->ProcessMessages();
+
+    if(!PauseFlag) {
+      if(ParseLine())
+        LogError("ERROR: ParseLine(), Missing Instruction Parameter.");
+    }
+    PressureGet();
+		TemperatureGet();
+  }
+
+  if(CheckBoxAutoTimer->Checked) {
+    TimerFlag = false;
+    CheckBoxAutoTimer->Enabled = true;
+  }
+
+  FormTempPressLog->Enabled1->Checked = false;
+  ProgressBarScript->Position = 0;
+
+  CalTime = Now();
+  sprintf(str,"END %f", (double)CalTime);
+  MemoBaroReadMon->Lines->Add(str);
+
+  CalFileName = "61000 Baro " + CalTime.FormatString("yyyy-mm-dd-hh-nn-ss") + ".cal";
+  if(ConvertBaroRead()) {
+    MemoMain->Lines->Add("Conversion error.");
+  }
+
+  if(EnableScriptEdit->Checked) MemoScript->ReadOnly = false;
+  else MemoScript->ReadOnly = true;
+
+  ButtonStart->Enabled = true;
+  ButtonPause->Enabled = false;
+  ButtonStop->Enabled = false;
+  ButtonDisconnect->Enabled = true;
+  ButtonGetCurrentValues->Enabled = true;
+  ButtonSaveBaroRead->Enabled = true;
+  ButtonPrintBaroRead->Enabled = true;
+  ButtonDrawGraph->Enabled = true;
+  ButtonPrintGraph->Enabled = true;
+  ButtonPrintGraphAll->Enabled = true;
+  ButtonAutoNum->Enabled = true;
+  CSpinEditPortT1Chk->Enabled = true;
+
+	if(Active(CommSocket[CSpinEditPortT1Chk->Value-1]))
+    ButtonGetTable->Enabled = true;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonPauseClick(TObject *Sender)
+{
+	if(PauseFlag == false) {
+		PauseFlag = true;
+		ButtonPause->Caption = "Resume";
+	}
+	else {
+		PauseFlag = false;
+		ButtonPause->Caption = "Pause Script";
+	}
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonStopClick(TObject *Sender)
+{
+  int result = Application->MessageBox(
+		L"Do you really want to Stop Script?",
+		L"Stop Script",
+        MB_YESNO);
+
+  if(result == IDNO) return;
+
+  RunFlag = false;
+  TableChkFlag = false;
+  PressureStop();
+  TemperatureStop();
+  //ButtonPause->Caption = "Pause Script";
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonMainClearClick(TObject *Sender)
+{
+  MemoMain->Clear();
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonSkipClick(TObject *Sender)
+{
+  int result = Application->MessageBox(
+		L"Do you really want to Skip\nthe rest of this script command?",
+		L"Skip",
+        MB_YESNO);
+
+  if(result == IDNO) return;
+
+  SkipFlag = true;
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonGetCurrentValuesClick(TObject *Sender)
+{
+  PressureGet();
+	TemperatureGet();
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonSetPressureClick(TObject *Sender)
+{
+  float fVal = MaskEditPressure->Text.ToDouble();
+  char str[100];
+
+  if(fVal < 300.0 || fVal > 1200.0) {
+    MessageBeep(0);
+    return;
+  }
+
+  sprintf(str,"Set Pressure to %.2f hPa?", fVal);
+
+  int result = Application->MessageBoxW(UnicodeString(str).c_str(), L"Pressure Control", MB_YESNO);
+
+
+  if(result == IDNO) return;
+
+  Screen->Cursor = crHourGlass;
+  PressureInit();
+  Sleep(1000);
+  PressureSet(fVal);
+  Screen->Cursor = crDefault;
+
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonStopPressureClick(TObject *Sender)
+{
+  int result = Application->MessageBox(
+	L"Stop Pressure Controller?",
+	L"Pressure Control",
+    MB_YESNO);
+
+  if(result == IDNO) return;
+
+  PressureStop();
+
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonSetTemperatureClick(TObject *Sender)
+{
+  float fVal = MaskEditTemperature->Text.ToDouble();
+  char str[100];
+
+  if(fVal < -55.0 || fVal > 70.0) {
+    MessageBeep(0);
+    return;
+  }
+
+  sprintf(str,"Set Temperature to %.1f°C?", fVal);
+
+  int result = Application->MessageBox(UnicodeString(str).c_str(), L"Env Chamber", MB_YESNO);
+
+  if(result == IDNO) return;
+
+  Screen->Cursor = crHourGlass;
+	TemperatureInit();
+  Sleep(1000);
+	TemperatureSet(fVal);
+  Screen->Cursor = crDefault;
+
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonStopTemperatureClick(TObject *Sender)
+{
+  int result = Application->MessageBox(
+	L"Stop Temperature Controller?",
+	L"Env Chamber",
+    MB_YESNO);
+
+  if(result == IDNO) return;
+
+  TemperatureStop();
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::CheckBoxAutoTimerClick(TObject *Sender)
+{
+  if(CheckBoxAutoTimer->Checked) ButtonStartStopTimer->Enabled = false;
+  else ButtonStartStopTimer->Enabled = true;
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::CSpinEditTargetPressureTimeLimitChange(
+			TObject *Sender)
+{
+	TargetPressureTimeLimit = (DWORD)CSpinEditTargetPressureTimeLimit->Value * (DWORD)1000;
+}
+//---------------------------------------------------------------------------
 
 
 //---------------------------------------------------------------------------
+// CODE BEHIND - Comm TAB
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonSelectAllClick(TObject *Sender)
+{
+	int i;
+
+	for (int i = 0; i < DigiCommChannels; i++) {
+		if (CommBox[i]) CommBox[i]->Checked = true;   // or false
+	}
+	if (PcBox) PcBox->Checked = true;
+	if (TcBox) TcBox->Checked = true;
+
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonDeselectAllClick(TObject *Sender)
+{
+  int i;
+
+	for (int i = 0; i < DigiCommChannels; i++) {
+		if (CommBox[i]) CommBox[i]->Checked = false;
+	}
+	if (PcBox) PcBox->Checked = false;
+	if (TcBox) TcBox->Checked = false;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
+{
+  int i;
+	char str[200];
+
+	for(i=0; i<DigiCommChannels; i++) {
+
+
+    if(i<=15) CommSocket[i]->Address = EditAddr1->Text;
+		else if(i>=16 && i<32) CommSocket[i]->Address = EditAddr2->Text;
+    else if(i>=32 && i<48) CommSocket[i]->Address = EditAddr3->Text;
+    else if(i>=48 && i<64) CommSocket[i]->Address = EditAddr4->Text;
+
+    if(CommBox[i]->Checked) {
+
+			EditSerialNum[i]->Enabled = true;
+			LabelSerialNum[i]->Enabled = true;
+
+			if(Active(CommSocket[i])) CommSocket[i]->Active = false;
+
+      try {
+				CommSocket[i]->Active = true;
+      }
+      catch(...) {
+				MemoMain->Lines->Add("Cannot Connect Port " + IntToStr(i+1));
+      }
+    }
+    else {
+			EditSerialNum[i]->Enabled = false;
+			LabelSerialNum[i]->Enabled = false;
+		}
+    CommBox[i]->Enabled = false;
+		Application->ProcessMessages();
+	}
+
+	// ---- Temperature Controller (TC) connection (separate from Digi ports) ----
+	if (TcSocket) {
+		if (TcBox && TcBox->Checked) {
+			TcSocket->Address = EditAddrTC->Text;
+			TcSocket->Port = 5025; // SCPI over TCP
+
+			if (Active(TcSocket)) TcSocket->Active = false;
+
+			try {
+				TcSocket->Active = true;
+			}
+			catch(...) {
+				MemoMain->Lines->Add("Cannot Connect TC");
+				if (TcLED) TcLED->Brush->Color = clRed;
+			}
+		}
+		else {
+			if (Active(TcSocket)) TcSocket->Active = false;
+			if (TcLED) TcLED->Brush->Color = clRed;
+		}
+	}
+	if (TcBox) TcBox->Enabled = false;
+
+	// ---- Pressure Controller (PC) connection (separate from Digi ports) ----
+	if (PcSocket) {
+		//SendTextLogged("ButtonConnectClick() PcSocket is not NULL\n");
+		if (PcBox && PcBox->Checked) {
+			//SendTextLogged("ButtonConnectClick() PcBox->Checked is true\n");
+			PcSocket->Address = EditAddrPC->Text;
+			PcSocket->Port = 5025; // SCPI over TCP
+
+			//SendTextLogged(sprintf("ButtonConnectClick() PcSocket->Port %d\n", PcSocket->Port));
+			if (Active(PcSocket)) PcSocket->Active = false;
+
+			try {
+				//SendTextLogged("ButtonConnectClick() setting PcSocket->Active true\n");
+				PcSocket->Active = true;
+			}
+			catch(...) {
+				MemoMain->Lines->Add("Cannot Connect PC");
+				if (PcLED) PcLED->Brush->Color = clRed;
+				//SendTextLogged("ButtonConnectClick() Exception\n");
+			}
+		}
+		else {
+			//SendTextLogged("ButtonConnectClick() PcBox->Checked is false\n");
+			if (Active(PcSocket)) PcSocket->Active = false;
+			if (PcLED) PcLED->Brush->Color = clRed;
+		}
+	}
+	if (PcBox) PcBox->Enabled = false;
+
+	ButtonSelectAll->Enabled = false;
+	ButtonDeselectAll->Enabled = false;
+
+	ButtonConnect->Enabled = false;
+	ButtonDisconnect->Enabled = true;
+	ButtonGetCurrentValues->Enabled = true;
+	ButtonStart->Enabled = true;
+
+	EditAddr1->Enabled = false;
+	EditAddr2->Enabled = false;
+	EditAddr3->Enabled = false;
+	EditAddr4->Enabled = false;
+	EditAddrPC->Enabled = false;
+	EditAddrTC->Enabled = false;
+
+	PortMonCount = PORTMONTIMEOUT;
+
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonDisconnectClick(TObject *Sender)
+{
+  int i;
+
+	int result = Application->MessageBoxW(
+    L"Do you really want to Disconnect?",
+		L"Disconnect",
+    MB_YESNO);
+
+  if(result == IDNO) return;
+
+  MemoMain->Lines->Add(" ");
+
+  for(i=0; i<DigiCommChannels; i++) {
+		if(Active(CommSocket[i])) CommSocket[i]->Active = false;
+    //MemoMain->Lines->Add("Disconnect Port " + IntToStr(i+1));
+    Application->ProcessMessages();
+	}
+
+  // ---- Temperature Controller (TC) disconnect ----
+	if (Active(TcSocket)) TcSocket->Active = false;
+	if (TcLED) TcLED->Brush->Color = clRed;
+	if (TcBox) TcBox->Enabled = true;
+
+	// ---- Pressure Controller (PC) disconnect ----
+	if (Active(PcSocket)) PcSocket->Active = false;
+	if (PcLED) PcLED->Brush->Color = clRed;
+	if (PcBox) PcBox->Enabled = true;
+
+	for(i=0; i<DigiCommChannels; i++) {
+    CommBox[i]->Enabled = true;
+		EditSerialNum[i]->Enabled = true;
+		LabelSerialNum[i]->Enabled = true;
+	}
+
+  ButtonSelectAll->Enabled = true;
+	ButtonDeselectAll->Enabled = true;
+
+  ButtonConnect->Enabled = true;
+  ButtonDisconnect->Enabled = false;
+  ButtonGetCurrentValues->Enabled = false;
+
+  EditAddr1->Enabled = true;
+  EditAddr2->Enabled = true;
+  EditAddr3->Enabled = true;
+  EditAddr4->Enabled = true;
+	EditAddrPC->Enabled = true;
+	EditAddrTC->Enabled = true;
+	 //ButtonUpdateIP->Enabled = true;
+
+}
+
+//---------------------------------------------------------------------------
+
+
+
+
+
 
 
