@@ -167,6 +167,8 @@ const std::vector<SockTraceEntry>& SockTracer::Entries()
     return g_entries;
 }
 
+// KPD DUMP TO FILE - Socket_Trace.txt
+
 void SockTracer::DumpToFile(const wchar_t* path)
 {
     EnsureInit();

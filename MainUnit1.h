@@ -39,7 +39,7 @@ __published:	// IDE-managed Components
   TMenuItem *Exit1;
   TButton *ButtonConnect;
   TButton *ButtonDisconnect;
-  TButton *ButtonStart;
+	TButton *ButtonStartScript;
   TButton *ButtonStop;
   TMemo *MemoScript;
   TMemo *MemoMonitor;
@@ -140,10 +140,10 @@ __published:	// IDE-managed Components
   TLabel *Label15;
   TLabel *Label16;
   TRadioGroup *RadioGroupGraphSensorType;
-  TEdit *EditBaroCmd;
+	TEdit *EditBaroCmdCalCheck;
   TEdit *EditAddr4;
   TLabel *Label17;
-  TEdit *EditBaroCmd2;
+	TEdit *EditBaroCmdPortMon;
   TButton *ButtonSendBaroCmd;
   TBevel *Bevel14;
   TCheckBox *CheckBoxConfirmBaroCmd;
@@ -185,16 +185,18 @@ __published:	// IDE-managed Components
 	TLabel *Label22;
 	TEdit *EditAddrPC;
 	TLabel *Label23;
+	TLabel *Label24;
+	TButton *ButtonCalCheckSendCommand;
 
 	void __fastcall FormClose(TObject *Sender, TCloseAction &Action);
-  void __fastcall ButtonConnectClick(TObject *Sender);
+	void __fastcall ButtonConnectClick(TObject *Sender);
   void __fastcall ButtonDisconnectClick(TObject *Sender);
-  void __fastcall ButtonMainClearClick(TObject *Sender);
+	void __fastcall ButtonMainClearClick(TObject *Sender);
   void __fastcall ButtonMonClearClick(TObject *Sender);
   void __fastcall OpenScript1Click(TObject *Sender);
   void __fastcall ButtonGetCurrentValuesClick(TObject *Sender);
   void __fastcall SaveScript1Click(TObject *Sender);
-  void __fastcall ButtonStartClick(TObject *Sender);
+  void __fastcall ButtonStartScriptClick(TObject *Sender);
   void __fastcall ButtonStopClick(TObject *Sender);
   void __fastcall Exit1Click(TObject *Sender);
   void __fastcall ScriptCommands1Click(TObject *Sender);
@@ -245,10 +247,10 @@ __published:	// IDE-managed Components
   void __fastcall ButtonDeselectAllClick(TObject *Sender);
   void __fastcall EnableBaroSendCharDelayClick(TObject *Sender);
   void __fastcall ButtonAutoNumClick(TObject *Sender);
-  void __fastcall EditBaroCmdKeyPress(TObject *Sender, char &Key);
-  void __fastcall EditBaroCmd2KeyPress(TObject *Sender, char &Key);
-  void __fastcall ButtonSendBaroCmdClick(TObject *Sender);
-  void __fastcall CSpinEditTargetPressureTimeLimitChange(TObject *Sender);
+  void __fastcall EditBaroCmdPortMonKeyPress(TObject *Sender, char &Key);
+  void __fastcall ButtonSendBaroPortMonCmdClick(TObject *Sender);
+  void __fastcall SendBaroCommand(const UnicodeString& cmdText, int port);
+	void __fastcall CSpinEditTargetPressureTimeLimitChange(TObject *Sender);
   void __fastcall CheckBoxEnableAutoNumberClick(TObject *Sender);
   void __fastcall ButtonSetPressureClick(TObject *Sender);
   void __fastcall ButtonStopPressureClick(TObject *Sender);
@@ -268,6 +270,17 @@ __published:	// IDE-managed Components
   void __fastcall ButtonStartStopTimerClick(TObject *Sender);
   void __fastcall CheckBoxAutoTimerClick(TObject *Sender);
 	bool __fastcall Active(TClientSocket* sock);
+	void __fastcall EditBaroCmdPortMonOnChange(TObject *Sender);
+	void __fastcall ButtonCalCheckSendCommandClick(TObject *Sender);
+	void __fastcall EditBaroCmdCalCheckOnChange(TObject *Sender);
+	void __fastcall EditAddr1OnChange(TObject *Sender);
+	void __fastcall EditAddr2OnChange(TObject *Sender);
+	void __fastcall EditAddr3OnChange(TObject *Sender);
+	void __fastcall EditAddr4OnChange(TObject *Sender);
+	void __fastcall EditAddrPCOnChange(TObject *Sender);
+	void __fastcall EditAddrTCOnChange(TObject *Sender);
+	void __fastcall MaskEditPressureOnChange(TObject *Sender);
+	void __fastcall MaskEditTemperatureOnChange(TObject *Sender);
 private:
 	TCheckBox *PcBox;
 	TCheckBox *TcBox;

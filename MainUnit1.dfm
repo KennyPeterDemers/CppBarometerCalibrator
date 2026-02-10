@@ -5,13 +5,13 @@ object Form1: TForm1
   BorderStyle = bsSingle
   Caption = 'Barometer Calibrator V1.0.0'
   ClientHeight = 640
-  ClientWidth = 722
+  ClientWidth = 724
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
-  Font.Height = -11
+  Font.Height = -13
   Font.Name = 'MS Sans Serif'
-  Font.Style = []
+  Font.Style = [fsBold]
   Icon.Data = {
     0000010004003030000001002000A8250000460000002020000001002000A810
     0000EE2500001818000001002000880900009636000010100000010020006804
@@ -568,7 +568,7 @@ object Form1: TForm1
   OnCloseQuery = FormCloseQuery
   OnMouseMove = FormMouseMove
   OnShow = FormShow
-  TextHeight = 13
+  TextHeight = 16
   object Bevel6: TBevel
     Left = 144
     Top = 360
@@ -584,47 +584,77 @@ object Form1: TForm1
     Shape = bsFrame
   end
   object Label3: TLabel
-    Left = 304
+    Left = 296
     Top = 368
-    Width = 44
+    Width = 54
     Height = 13
     Caption = 'Pressure:'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
   end
   object LabelPressure: TLabel
-    Left = 352
-    Top = 366
+    Left = 362
+    Top = 367
     Width = 81
     Height = 17
     AutoSize = False
     Caption = '* * * * *'
     Color = clWhite
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
     ParentColor = False
+    ParentFont = False
     Layout = tlCenter
   end
   object Label1: TLabel
     Left = 296
-    Top = 392
-    Width = 63
+    Top = 389
+    Width = 76
     Height = 13
     Caption = 'Temperature:'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
   end
   object LabelTemperature: TLabel
-    Left = 368
+    Left = 380
     Top = 390
     Width = 65
     Height = 17
     AutoSize = False
     Caption = '* * * * *'
     Color = clWhite
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
     ParentColor = False
+    ParentFont = False
     Layout = tlCenter
   end
   object LabelWait: TLabel
     Left = 216
     Top = 371
-    Width = 33
+    Width = 40
     Height = 13
     Caption = '0000.0'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
   end
   object Bevel7: TBevel
     Left = 16
@@ -634,11 +664,17 @@ object Form1: TForm1
     Shape = bsFrame
   end
   object Label4: TLabel
-    Left = 184
+    Left = 178
     Top = 371
-    Width = 25
+    Width = 31
     Height = 13
     Caption = 'Wait:'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
   end
   object Bevel11: TBevel
     Left = 8
@@ -655,12 +691,18 @@ object Form1: TForm1
     Shape = bsFrame
   end
   object Label19: TLabel
-    Left = 472
-    Top = 536
-    Width = 57
+    Left = 466
+    Top = 533
+    Width = 69
     Height = 13
     Caption = 'Cmd Retries'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
   end
   object Bevel17: TBevel
     Left = 456
@@ -670,18 +712,30 @@ object Form1: TForm1
     Shape = bsFrame
   end
   object Label20: TLabel
-    Left = 472
+    Left = 464
     Top = 485
-    Width = 56
+    Width = 69
     Height = 13
     Caption = 'Before Error'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
   end
   object Label21: TLabel
-    Left = 472
+    Left = 464
     Top = 472
-    Width = 23
+    Width = 28
     Height = 13
     Caption = 'Time'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
   end
   object Bevel18: TBevel
     Left = 544
@@ -693,14 +747,20 @@ object Form1: TForm1
   object LabelTimer: TLabel
     Left = 558
     Top = 504
-    Width = 63
+    Width = 76
     Height = 13
     Caption = '00d 00:00:00'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
   end
   object StatusBar1: TStatusBar
     Left = 0
     Top = 621
-    Width = 722
+    Width = 724
     Height = 19
     Panels = <
       item
@@ -712,82 +772,89 @@ object Form1: TForm1
       item
         Width = 50
       end>
+    ExplicitWidth = 722
   end
   object PageControl1: TPageControl
-    Left = 16
+    Left = 2
     Top = 8
-    Width = 698
+    Width = 720
     Height = 337
-    ActivePage = TabSheetComm
+    ActivePage = TabSheetCalChk
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 17
     OnChange = PageControl1Change
     object TabSheetComm: TTabSheet
       Caption = 'Comm'
       object Bevel2: TBevel
-        Left = 110
+        Left = 94
         Top = 192
-        Width = 569
+        Width = 106
         Height = 97
         Shape = bsFrame
       end
       object Bevel3: TBevel
-        Left = 16
-        Top = 16
-        Width = 663
+        Left = 3
+        Top = 23
+        Width = 710
         Height = 161
         Shape = bsFrame
       end
       object Label2: TLabel
-        Left = 300
-        Top = 217
-        Width = 65
+        Left = 220
+        Top = 190
+        Width = 80
         Height = 13
         Caption = 'IP Addr (1-16)'
       end
       object Label7: TLabel
-        Left = 300
+        Left = 220
         Top = 250
-        Width = 71
+        Width = 87
         Height = 13
         Caption = 'IP Addr (17-32)'
       end
       object Label11: TLabel
-        Left = 470
-        Top = 217
-        Width = 71
+        Left = 393
+        Top = 190
+        Width = 87
         Height = 13
         Caption = 'IP Addr (33-48)'
       end
       object Bevel4: TBevel
-        Left = 16
+        Left = 2
         Top = 192
-        Width = 90
+        Width = 88
         Height = 97
         Shape = bsFrame
       end
       object Label17: TLabel
-        Left = 467
-        Top = 249
-        Width = 71
+        Left = 393
+        Top = 250
+        Width = 87
         Height = 13
         Caption = 'IP Addr (49-64)'
       end
       object Label22: TLabel
-        Left = 650
-        Top = 218
-        Width = 14
+        Left = 600
+        Top = 190
+        Width = 17
         Height = 13
         Caption = 'PC'
       end
       object Label23: TLabel
-        Left = 650
-        Top = 249
-        Width = 14
+        Left = 600
+        Top = 250
+        Width = 17
         Height = 13
         Caption = 'TC'
       end
       object ButtonConnect: TButton
-        Left = 130
+        Left = 110
         Top = 214
         Width = 73
         Height = 25
@@ -796,7 +863,7 @@ object Form1: TForm1
         OnClick = ButtonConnectClick
       end
       object ButtonDisconnect: TButton
-        Left = 130
+        Left = 110
         Top = 245
         Width = 73
         Height = 25
@@ -806,34 +873,37 @@ object Form1: TForm1
         OnClick = ButtonDisconnectClick
       end
       object EditAddr1: TEdit
-        Left = 220
-        Top = 214
-        Width = 76
+        Left = 206
+        Top = 210
+        Width = 106
         Height = 21
         ReadOnly = True
         TabOrder = 4
         Text = '192.168.1.50'
+        OnChange = EditAddr1OnChange
       end
       object EditAddr2: TEdit
-        Left = 220
-        Top = 247
-        Width = 76
+        Left = 210
+        Top = 270
+        Width = 106
         Height = 21
         ReadOnly = True
         TabOrder = 5
         Text = '192.168.1.51'
+        OnChange = EditAddr2OnChange
       end
       object EditAddr3: TEdit
-        Left = 385
-        Top = 214
-        Width = 76
+        Left = 380
+        Top = 210
+        Width = 106
         Height = 21
         ReadOnly = True
         TabOrder = 6
         Text = '192.168.1.52'
+        OnChange = EditAddr3OnChange
       end
       object ButtonSelectAll: TButton
-        Left = 22
+        Left = 8
         Top = 212
         Width = 75
         Height = 25
@@ -842,7 +912,7 @@ object Form1: TForm1
         OnClick = ButtonSelectAllClick
       end
       object ButtonDeselectAll: TButton
-        Left = 29
+        Left = 8
         Top = 243
         Width = 75
         Height = 25
@@ -851,31 +921,34 @@ object Form1: TForm1
         OnClick = ButtonDeselectAllClick
       end
       object EditAddr4: TEdit
-        Left = 385
-        Top = 247
-        Width = 76
+        Left = 380
+        Top = 270
+        Width = 106
         Height = 21
         ReadOnly = True
         TabOrder = 7
         Text = '192.168.1.53'
+        OnChange = EditAddr4OnChange
       end
       object EditAddrTC: TEdit
-        Left = 554
-        Top = 247
-        Width = 90
+        Left = 562
+        Top = 269
+        Width = 106
         Height = 21
         ReadOnly = True
         TabOrder = 8
-        Text = '10.130.186.148'
+        Text = '192.168.1.148'
+        OnChange = EditAddrTCOnChange
       end
       object EditAddrPC: TEdit
-        Left = 554
-        Top = 214
-        Width = 90
+        Left = 562
+        Top = 209
+        Width = 106
         Height = 21
         ReadOnly = True
         TabOrder = 9
-        Text = '1.192.168.160'
+        Text = '192.192.1.160'
+        OnChange = EditAddrPCOnChange
       end
     end
     object TabSheetSN: TTabSheet
@@ -884,47 +957,47 @@ object Form1: TForm1
       object Bevel8: TBevel
         Left = 16
         Top = 16
-        Width = 585
+        Width = 680
         Height = 233
         Shape = bsFrame
       end
       object Label12: TLabel
         Left = 165
         Top = 268
-        Width = 26
+        Width = 33
         Height = 13
         Caption = 'Prefix'
       end
       object Label13: TLabel
         Left = 253
         Top = 262
-        Width = 22
+        Width = 28
         Height = 13
         Caption = 'Start'
       end
       object Label14: TLabel
         Left = 253
         Top = 274
-        Width = 37
+        Width = 44
         Height = 13
         Caption = 'Number'
       end
       object Label15: TLabel
         Left = 445
         Top = 262
-        Width = 22
+        Width = 28
         Height = 13
         Caption = 'Start'
       end
       object Label16: TLabel
         Left = 445
         Top = 274
-        Width = 19
+        Width = 30
         Height = 13
         Caption = 'Port'
       end
       object ButtonAutoNum: TButton
-        Left = 24
+        Left = 16
         Top = 264
         Width = 89
         Height = 25
@@ -934,7 +1007,7 @@ object Form1: TForm1
         OnClick = ButtonAutoNumClick
       end
       object EditAutoPrefix: TEdit
-        Left = 120
+        Left = 114
         Top = 264
         Width = 41
         Height = 21
@@ -960,7 +1033,7 @@ object Form1: TForm1
         Value = 1
       end
       object CheckBoxEnableAutoNumber: TCheckBox
-        Left = 480
+        Left = 490
         Top = 272
         Width = 121
         Height = 17
@@ -1009,24 +1082,30 @@ object Form1: TForm1
       OnMouseMove = TabSheetPortMonMouseMove
       object Bevel14: TBevel
         Left = 8
-        Top = 144
+        Top = 164
         Width = 105
         Height = 137
         Shape = bsFrame
       end
       object Bevel5: TBevel
-        Left = 8
-        Top = 16
-        Width = 105
-        Height = 121
+        Left = 0
+        Top = 17
+        Width = 130
+        Height = 141
         Shape = bsFrame
       end
       object Label5: TLabel
-        Left = 80
-        Top = 163
-        Width = 19
+        Left = 76
+        Top = 183
+        Width = 24
         Height = 13
         Caption = 'Port'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
+        ParentFont = False
       end
       object ShapePortMonLED: TShape
         Left = 71
@@ -1036,8 +1115,21 @@ object Form1: TForm1
         Brush.Color = clRed
         Pen.Style = psClear
       end
+      object Label24: TLabel
+        Left = 4
+        Top = 25
+        Width = 116
+        Height = 13
+        Caption = 'Barometer Command'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
       object MemoMonitor: TMemo
-        Left = 120
+        Left = 130
         Top = 16
         Width = 345
         Height = 265
@@ -1054,11 +1146,17 @@ object Form1: TForm1
       end
       object ButtonMonClear: TButton
         Left = 24
-        Top = 237
+        Top = 257
         Width = 73
         Height = 25
         Hint = 'Clear text in window.'
         Caption = 'Clear'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
+        ParentFont = False
         ParentShowHint = False
         ShowHint = True
         TabOrder = 2
@@ -1066,11 +1164,17 @@ object Form1: TForm1
       end
       object CheckBoxPortMonEnable: TCheckBox
         Left = 24
-        Top = 189
+        Top = 209
         Width = 65
         Height = 17
         Hint = 'View serial activity on the port.'
         Caption = 'View'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
+        ParentFont = False
         ParentShowHint = False
         ShowHint = True
         TabOrder = 1
@@ -1078,66 +1182,102 @@ object Form1: TForm1
       end
       object CSpinEditPortMon: TCSpinEdit
         Left = 24
-        Top = 160
+        Top = 180
         Width = 41
         Height = 22
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
         MaxValue = 64
         MinValue = 1
+        ParentFont = False
         TabOrder = 0
         Value = 1
         OnChange = CSpinEditPortMonChange
       end
       object CheckBoxAutoOff: TCheckBox
         Left = 24
-        Top = 208
+        Top = 228
         Width = 73
         Height = 17
         Hint = 'Automatically disables view after 10 min of user inactivity.'
         Caption = 'Auto Off'
         Checked = True
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
+        ParentFont = False
         ParentShowHint = False
         ShowHint = True
         State = cbChecked
         TabOrder = 4
       end
-      object EditBaroCmd2: TEdit
-        Left = 20
-        Top = 32
-        Width = 81
-        Height = 21
+      object EditBaroCmdPortMon: TEdit
+        Left = 5
+        Top = 42
+        Width = 110
+        Height = 24
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -13
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
+        ParentFont = False
         TabOrder = 5
-        Text = 'Baro Cmd Here'
-        OnKeyPress = EditBaroCmd2KeyPress
+        OnChange = EditBaroCmdPortMonOnChange
+        OnKeyPress = EditBaroCmdPortMonKeyPress
       end
       object ButtonSendBaroCmd: TButton
-        Left = 24
-        Top = 96
-        Width = 73
+        Left = 12
+        Top = 122
+        Width = 94
         Height = 25
-        Caption = 'Send Cmd'
+        Caption = 'Send Command'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
+        ParentFont = False
         TabOrder = 6
-        OnClick = ButtonSendBaroCmdClick
+        OnClick = ButtonSendBaroPortMonCmdClick
       end
       object CheckBoxConfirmBaroCmd: TCheckBox
-        Left = 24
-        Top = 56
+        Left = 20
+        Top = 72
         Width = 73
         Height = 17
         Hint = 'Show confirmation dialog before sending command.'
         Caption = 'Confirm'
         Checked = True
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
+        ParentFont = False
         ParentShowHint = False
         ShowHint = True
         State = cbChecked
         TabOrder = 7
       end
       object CheckBoxSendAllPorts: TCheckBox
-        Left = 24
-        Top = 75
-        Width = 81
+        Left = 20
+        Top = 95
+        Width = 100
         Height = 17
         Hint = 'Send command to all ports.'
         Caption = 'To All Ports'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'MS Sans Serif'
+        Font.Style = [fsBold]
+        ParentFont = False
         ParentShowHint = False
         ShowHint = True
         TabOrder = 8
@@ -1190,28 +1330,28 @@ object Form1: TForm1
       object Bevel12: TBevel
         Left = 8
         Top = 16
-        Width = 105
+        Width = 106
         Height = 166
         Shape = bsFrame
       end
       object Label6: TLabel
         Left = 67
         Top = 27
-        Width = 19
+        Width = 24
         Height = 13
         Caption = 'Port'
       end
       object Label9: TLabel
         Left = 72
         Top = 158
-        Width = 21
+        Width = 27
         Height = 13
         Caption = 'Limit'
       end
       object Label10: TLabel
         Left = 72
         Top = 145
-        Width = 22
+        Width = 28
         Height = 13
         Caption = 'Error'
       end
@@ -1223,9 +1363,9 @@ object Form1: TForm1
         Shape = bsFrame
       end
       object Label18: TLabel
-        Left = 128
-        Top = 248
-        Width = 97
+        Left = 240
+        Top = 244
+        Width = 115
         Height = 13
         Caption = 'Barometer command'
       end
@@ -1266,6 +1406,8 @@ object Form1: TForm1
           Cursor = crCross
           Align = alClient
           OnMouseMove = ImageCalCheckMouseMove
+          ExplicitLeft = -1
+          ExplicitTop = -1
         end
       end
       object ButtonPrintGraph: TButton
@@ -1300,7 +1442,7 @@ object Form1: TForm1
         Text = '0.5'
       end
       object RadioButtonBW: TRadioButton
-        Left = 21
+        Left = 10
         Top = 125
         Width = 42
         Height = 17
@@ -1308,9 +1450,9 @@ object Form1: TForm1
         TabOrder = 6
       end
       object RadioButtonColor: TRadioButton
-        Left = 59
+        Left = 50
         Top = 124
-        Width = 47
+        Width = 50
         Height = 17
         Caption = 'Color'
         Checked = True
@@ -1321,7 +1463,7 @@ object Form1: TForm1
       object CheckBoxOverride: TCheckBox
         Left = 24
         Top = 205
-        Width = 65
+        Width = 68
         Height = 16
         Caption = 'Override'
         TabOrder = 8
@@ -1356,14 +1498,22 @@ object Form1: TForm1
           '61302-72')
         TabOrder = 11
       end
-      object EditBaroCmd: TEdit
-        Left = 128
-        Top = 264
-        Width = 329
+      object EditBaroCmdCalCheck: TEdit
+        Left = 172
+        Top = 257
+        Width = 230
         Height = 21
         TabOrder = 12
-        Text = 'Baro Cmd Here'
-        OnKeyPress = EditBaroCmdKeyPress
+        OnChange = EditBaroCmdCalCheckOnChange
+      end
+      object ButtonCalCheckSendCommand: TButton
+        Left = 240
+        Top = 284
+        Width = 100
+        Height = 24
+        Caption = 'Send Command'
+        TabOrder = 13
+        OnClick = ButtonCalCheckSendCommandClick
       end
     end
     object TabSheetT1Chk: TTabSheet
@@ -1379,7 +1529,7 @@ object Form1: TForm1
       object Label8: TLabel
         Left = 80
         Top = 35
-        Width = 19
+        Width = 24
         Height = 13
         Caption = 'Port'
       end
@@ -1482,14 +1632,20 @@ object Form1: TForm1
       end
     end
   end
-  object ButtonStart: TButton
+  object ButtonStartScript: TButton
     Left = 43
-    Top = 376
+    Top = 380
     Width = 75
     Height = 25
     Caption = 'Start Script'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 0
-    OnClick = ButtonStartClick
+    OnClick = ButtonStartScriptClick
   end
   object ButtonStop: TButton
     Left = 43
@@ -1498,6 +1654,12 @@ object Form1: TForm1
     Height = 25
     Caption = 'Stop Script'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 3
     OnClick = ButtonStopClick
   end
@@ -1509,6 +1671,12 @@ object Form1: TForm1
     Hint = 'Causes current script instruction will finish immediately.'
     Caption = 'Skip'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     ParentShowHint = False
     ShowHint = True
     TabOrder = 6
@@ -1524,7 +1692,7 @@ object Form1: TForm1
   end
   object MemoMain: TMemo
     Left = 145
-    Top = 464
+    Top = 463
     Width = 305
     Height = 121
     Font.Charset = DEFAULT_CHARSET
@@ -1538,11 +1706,17 @@ object Form1: TForm1
     TabOrder = 16
   end
   object ButtonMainClear: TButton
-    Left = 36
+    Left = 38
     Top = 550
     Width = 75
     Height = 25
     Caption = 'Clear'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 4
     OnClick = ButtonMainClearClick
   end
@@ -1554,6 +1728,12 @@ object Form1: TForm1
     Hint = 'Port must be connected to get values.'
     Caption = 'Get Current Values'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 7
     OnClick = ButtonGetCurrentValuesClick
   end
@@ -1564,19 +1744,31 @@ object Form1: TForm1
     Height = 25
     Caption = 'Pause Script'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     ParentShowHint = False
     ShowHint = False
     TabOrder = 1
     OnClick = ButtonPauseClick
   end
   object EditErrBox: TEdit
-    Left = 45
+    Left = 28
     Top = 452
-    Width = 73
+    Width = 100
     Height = 21
     BevelInner = bvNone
     BevelOuter = bvNone
     Color = clYellow
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 2
     Text = ' Chk Err Log!'
   end
@@ -1588,9 +1780,15 @@ object Form1: TForm1
     Hint = 
       'Seconds for controller to reach target pressure before reporting' +
       ' error.'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
     Increment = 10
     MaxValue = 600
     MinValue = 10
+    ParentFont = False
     ParentShowHint = False
     ShowHint = True
     TabOrder = 14
@@ -1603,7 +1801,13 @@ object Form1: TForm1
     Width = 49
     Height = 22
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
     MaxValue = 3
+    ParentFont = False
     ReadOnly = True
     TabOrder = 15
     Value = 3
@@ -1623,9 +1827,16 @@ object Form1: TForm1
     Height = 21
     Enabled = False
     EditMask = '!9999;0; '
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
     MaxLength = 4
+    ParentFont = False
     TabOrder = 8
     Text = '1000'
+    OnChange = MaskEditPressureOnChange
     OnKeyPress = MaskEditPressureKeyPress
   end
   object MaskEditTemperature: TMaskEdit
@@ -1635,18 +1846,31 @@ object Form1: TForm1
     Height = 21
     Enabled = False
     EditMask = '####;0; '
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
     MaxLength = 4
+    ParentFont = False
     TabOrder = 11
     Text = '25'
+    OnChange = MaskEditTemperatureOnChange
     OnKeyPress = MaskEditTemperatureKeyPress
   end
   object ButtonSetPressure: TButton
-    Left = 472
+    Left = 466
     Top = 394
-    Width = 73
+    Width = 80
     Height = 25
     Caption = 'Set Pressure'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 9
     OnClick = ButtonSetPressureClick
   end
@@ -1657,6 +1881,12 @@ object Form1: TForm1
     Height = 25
     Caption = 'Set Temp'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 12
     OnClick = ButtonSetTemperatureClick
   end
@@ -1667,6 +1897,12 @@ object Form1: TForm1
     Height = 25
     Caption = 'Stop P'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 10
     OnClick = ButtonStopPressureClick
   end
@@ -1677,6 +1913,12 @@ object Form1: TForm1
     Height = 25
     Caption = 'Stop T'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 13
     OnClick = ButtonStopTemperatureClick
   end
@@ -1687,6 +1929,12 @@ object Form1: TForm1
     Height = 25
     Caption = 'Start Timer'
     Enabled = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     TabOrder = 20
     OnClick = ButtonStartStopTimerClick
   end
@@ -1697,6 +1945,12 @@ object Form1: TForm1
     Height = 17
     Caption = 'Auto'
     Checked = True
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
     State = cbChecked
     TabOrder = 21
     OnClick = CheckBoxAutoTimerClick

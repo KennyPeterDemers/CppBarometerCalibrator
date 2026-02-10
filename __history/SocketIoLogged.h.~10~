@@ -1,0 +1,77 @@
+#pragma once
+
+#include <cstdio>
+#include <cstring>
+#include <System.hpp>     // AnsiString
+#include "SockTrace.h"
+
+enum class SendTermination : uint8_t
+{
+		CR = 0,		// terminate with a CR
+		LF,				// terminate with a LF
+		CRLF,			// terminate with a CR LF sequence
+		LFCR      // terminate with a LF CR sequence
+};
+
+
+// Build "ip:port" from any socket type that has RemoteAddress / RemotePort
+template <typename TSock>
+inline void BuildEndpoint(TSock* sock, char* ep, int epSize)
+{
+    // RemoteAddress is typically UnicodeString; convert to AnsiString
+    AnsiString addr = sock->RemoteAddress;
+    int port = sock->RemotePort;
+    std::snprintf(ep, epSize, "%s:%d", addr.c_str(), port);
+}
+
+template <typename TSock>
+inline int SendTextLogged(TSock* sock, const char* text, SendTermination term)
+{
+    if (!sock || !text)
+        return -1;
+
+    char ep[128];
+    BuildEndpoint(sock, ep, (int)sizeof(ep));
+
+    // Build a new buffer with CR appended
+    // SCPI commands are short, but be safe
+    char buf[1024];
+
+    size_t len = std::strlen(text);
+
+    // Prevent overflow
+    if (len + 1 >= sizeof(buf))
+        return -1;
+
+		// Strip trailing CR/LF from input in case call added it by mistake
+		while (len > 0 && (text[len - 1] == '\r' || text[len - 1] == '\n'))
+			--len;
+
+    std::memcpy(buf, text, len);
+    buf[len]     = '\n';   // append CR
+    buf[len + 1] = '\0';   // null-terminate for logging
+
+    // Log exactly what will be sent
+    if (buf[0] == 'B')
+    {
+        SockTracer::Log(true, ep, buf, (int)(len + 1));
+    }
+
+    SockTracer::Log(true, ep, buf, (int)(len + 1));
+
+    // Send including the LF (but NOT the null terminator)
+    return sock->SendBuf(buf, (int)(len + 1));
+}
+
+
+template <typename TSock>
+inline void LogRxTextLogged(TSock* sock, const char* text)
+{
+    if (!sock || !text) return;
+
+    char ep[128];
+    BuildEndpoint(sock, ep, (int)sizeof(ep));
+
+		SockTracer::Log(false, ep, text, (int)std::strlen(text));
+}
+

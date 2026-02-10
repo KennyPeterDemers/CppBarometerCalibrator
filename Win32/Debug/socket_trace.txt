@@ -1,1 +1,7 @@
 Seq	DeltaMs	Endpoint		Dir	Hex	Ascii	AsciiNote
+1	0	Addr1: 192.168.1.50
+2	0	Addr2: 192.168.1.51
+3	0	Addr3: 192.168.1.52
+4	0	Addr4: 192.168.1.53
+5	0	AddrPC: 127.0.0.1
+6	0	AddrTC: 192.168.1.74

@@ -27,29 +27,35 @@
 #include <Vcl.Dialogs.hpp>   // ShowMessage
 #include <IdIOHandlerStack.hpp>
 #include <Winapi.WinSock2.hpp>
-
+#include <Windows.hpp>
 //---------------------------------------------------------------------------
 #pragma package(smart_init)
 #pragma link "CSPIN"
 #pragma resource "*.dfm"
 
 
-static constexpr int DigiCommChannels = 64;
-static constexpr int RcvStrLen = 1000;
+static constexpr int DIGI_COMMAND_CHANNELS = 64;
+static constexpr int RCV_STR_LEN = 256;
 
 // 4 Digi Servers of 16 channels each
-char RcvStr[DigiCommChannels][RcvStrLen];
-int RcvIndex[DigiCommChannels];
+char RcvStr[DIGI_COMMAND_CHANNELS][RCV_STR_LEN];
+int RcvIndex[DIGI_COMMAND_CHANNELS];
 
 // Temperature Controller
-char TcRcvStr[RcvStrLen];
-int  TcRcvIndex = 0;TForm1 *Form1;
+char TcRcvStr[RCV_STR_LEN];
+int  TcRcvIndex = 0;
 
-TClientSocket *CommSocket[DigiCommChannels];
-TCheckBox *CommBox[DigiCommChannels];
-TShape *SocketLED[DigiCommChannels];
-TEdit *EditSerialNum[DigiCommChannels];
-TLabel *LabelSerialNum[DigiCommChannels];
+// Pressure Controller
+char PcRcvStr[RCV_STR_LEN];
+int  PcRcvIndex = 0;
+
+TForm1 *Form1;
+
+TClientSocket *CommSocket[DIGI_COMMAND_CHANNELS];
+TCheckBox *CommBox[DIGI_COMMAND_CHANNELS];
+TShape *SocketLED[DIGI_COMMAND_CHANNELS];
+TEdit *EditSerialNum[DIGI_COMMAND_CHANNELS];
+TLabel *LabelSerialNum[DIGI_COMMAND_CHANNELS];
 //TLabel *CommLabel[16];
 
 AnsiString WorkingDir;
@@ -57,10 +63,10 @@ AnsiString IniDir;
 AnsiString ScriptFileName, Script302StdFile, Script202StdFile;
 bool RunFlag;
 int ScriptIndex, ScriptCount;
-int SubReturnStack[DigiCommChannels], SubReturnCount;
+int SubReturnStack[DIGI_COMMAND_CHANNELS], SubReturnCount;
 int ProgressCount;
 bool SkipFlag, BaroFileSaved, PauseFlag;
-bool BaroReadFlag[DigiCommChannels];
+bool BaroReadFlag[DIGI_COMMAND_CHANNELS];
 float CurrentPressure, CurrentTemp;
 int PortMonCount;
 bool TableChkFlag;
@@ -68,7 +74,7 @@ bool PressureReadingReady;
 bool ScriptDirtyFlag = false;
 DWORD TargetPressureTimeLimit = 60000;
 
-int NoActivityTime[64] = {0};
+int NoActivityTime[DIGI_COMMAND_CHANNELS] = {0};
 
 int TempPressLogDelay = 30;
 
@@ -76,7 +82,7 @@ int ModeVal;
 #define RUN_MODE 0
 #define CAPTURE_MODE 1
 
-static constexpr int ReadBaroArrayMax = 10000;   // preferred in modern C++
+static constexpr int READ_BARO_ARRAY_MAX = 10000;   // preferred in modern C++
 
 #define SN_STR_LEN 20
 #define CAPTURE_STR_LEN 20
@@ -93,7 +99,7 @@ struct {
 	float RefTemp, RefPressure, Pressure, RawTemp, RawPressure;
 	char SnStr[SN_STR_LEN];
 	char CaptureStr[CAPTURE_STR_LEN];
-} ReadBaroArray[ReadBaroArrayMax];
+} ReadBaroArray[READ_BARO_ARRAY_MAX];
 
 int ReadBaroIndex;
 
@@ -117,9 +123,10 @@ COMMTIMEOUTS ctmoNew = {0};
 bool TimerFlag = false;
 TDateTime TimerTime;
 
-const int baseLeft = 50;        // was 35
+const int baseLeft = 22;        // was 35
 const int ledLeft  = baseLeft - 10;  // keep LED 10px left of checkbox
-const int colSpacing = 68;
+const int colSpacing = 80;
+const int colSpacingSN = 82;
 const int baseTop    = 30;
 const int rowSpacing = 16;
 
@@ -130,6 +137,10 @@ const int ledDy =  6;
 const int ninthColLeft = baseLeft + colSpacing * 8;
 const int ninthLedLeft = ledLeft  + colSpacing * 8;
 
+static void CenterEditText(TEdit* ed);  // Forward definitions
+static void CenterMaskEditText(TMaskEdit* ed);  // Forward definitions
+static void CenterSingleLineTEdit(TEdit* ed);
+static void CenterSingleLineTMaskEdit(TMaskEdit* ed);
 
 //---------------------------------------------------------------------------
 __fastcall TForm1::TForm1(TComponent* Owner)
@@ -197,7 +208,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 
   delete pIniFile;
 
-  for(i=0; i<DigiCommChannels; i++) {
+	for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
     //Application->ProcessMessages();
 
     RcvIndex[i] = 0;
@@ -213,7 +224,7 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 		EditSerialNum[i] = new TEdit(this);
 		EditSerialNum[i]->Parent = TabSheetSN;
 		//EditSerialNum[i]->Width = 65;
-		EditSerialNum[i]->Width = 52;
+		EditSerialNum[i]->Width = 62;
 		sprintf(str, "SN%02i", i+1);
 		EditSerialNum[i]->Text = str;
 
@@ -227,9 +238,9 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 		//LabelSerialNum[i]->Left = 27 + 105 * (i/8);
 		//LabelSerialNum[i]->Top = 39 + (i%8)*24;
 
-		EditSerialNum[i]->Left = 42 + colSpacing * (i/8);
+		EditSerialNum[i]->Left = 42 + colSpacingSN * (i/8);
 		EditSerialNum[i]->Top = 35 + (i%8)*24;
-		LabelSerialNum[i]->Left = 27 + colSpacing * (i/8);
+		LabelSerialNum[i]->Left = 27 + colSpacingSN * (i/8);
 		LabelSerialNum[i]->Top = 39 + (i%8)*24;
 
 		CommSocket[i] = new TClientSocket(this);    // KPD EACH SOCKET IS OPENED
@@ -329,9 +340,34 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 	PcSocket->ClientType = ctNonBlocking;
 	PcSocket->OnConnect = PcSocketConnect;
 	PcSocket->OnDisconnect = PcSocketDisconnect;
+	PcSocket->OnRead = PcSocketRead;
 	PcSocket->OnError = PcSocketError;
 
-}
+	char buff[64];
+	AnsiString a = EditAddr1->Text;          // UnicodeString -> AnsiString
+	std::snprintf(buff, sizeof(buff), "Addr1: %s", a.c_str());
+	SockTracer::Log(TraceKind::Note, buff);
+
+	a = EditAddr2->Text;          // UnicodeString -> AnsiString
+	std::snprintf(buff, sizeof(buff), "Addr2: %s", a.c_str());
+	SockTracer::Log(TraceKind::Note, buff);
+
+	a = EditAddr3->Text;          // UnicodeString -> AnsiString
+	std::snprintf(buff, sizeof(buff), "Addr3: %s", a.c_str());
+	SockTracer::Log(TraceKind::Note, buff);
+
+	a = EditAddr4->Text;          // UnicodeString -> AnsiString
+	std::snprintf(buff, sizeof(buff), "Addr4: %s", a.c_str());
+	SockTracer::Log(TraceKind::Note, buff);
+
+	a = EditAddrPC->Text;          // UnicodeString -> AnsiString
+	std::snprintf(buff, sizeof(buff), "AddrPC: %s", a.c_str());
+	SockTracer::Log(TraceKind::Note, buff);
+
+	a = EditAddrTC->Text;          // UnicodeString -> AnsiString
+	std::snprintf(buff, sizeof(buff), "AddrTC: %s", a.c_str());
+	SockTracer::Log(TraceKind::Note, buff);
+}
 //---------------------------------------------------------------------------
 
 void __fastcall TForm1::FormClose(TObject *Sender, TCloseAction &Action)
@@ -349,7 +385,7 @@ void __fastcall TForm1::FormClose(TObject *Sender, TCloseAction &Action)
 	}
 
 
-  for(i=0; i<DigiCommChannels; i++) {
+	for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
 		if(Active(CommSocket[i])) CommSocket[i]->Active = false;
     delete CommSocket[i];
 		delete CommBox[i];
@@ -378,7 +414,7 @@ void __fastcall TForm1::FormClose(TObject *Sender, TCloseAction &Action)
   pIniFile->WriteString("Settings","Script302StdFile", Script302StdFile);
   pIniFile->WriteString("Settings","Script202StdFile", Script202StdFile);
 
-  pIniFile->WriteString("Settings","IPAddr1", EditAddr1->Text);
+	pIniFile->WriteString("Settings","IPAddr1", EditAddr1->Text);
   pIniFile->WriteString("Settings","IPAddr2", EditAddr2->Text);
   pIniFile->WriteString("Settings","IPAddr3", EditAddr3->Text);
   pIniFile->WriteString("Settings","IPAddr4", EditAddr4->Text);
@@ -430,18 +466,19 @@ void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket) {
 	}
 	NoActivityTime[i] = 0;
 
-  // !ATTN! COMMENT THESE TWO LINES OUT
-  //sprintf(str, "%s %i", Socket->RemoteAddress.c_str(), i);
+	// !ATTN! COMMENT THESE TWO LINES OUT
+	//sprintf(str, "%s %i", Socket->RemoteAddress.c_str(), i);
 	//MemoMonitor->Lines->Add(str);
 
-  int PortMon = CSpinEditPortMon->Value - 1;
-  int PortT1Chk = CSpinEditPortT1Chk->Value - 1;
+	int PortMon = CSpinEditPortMon->Value - 1;
+	int PortT1Chk = CSpinEditPortT1Chk->Value - 1;
 
 	while(Socket->ReceiveBuf(&ch, 1) != -1) {
 		switch(ch) {
 			case '>':
 				break;
 			case 13:
+				//Terminate string with NULL
 				RcvStr[i][RcvIndex[i]] = 0;
 				LogRxTextLogged(Socket, &RcvStr[i][0]);
 
@@ -456,9 +493,9 @@ void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket) {
 				}
 				if (BaroReadFlag[i]) {
 					// guard BEFORE any ReadBaroArray[ReadBaroIndex] access ***
-					if (ReadBaroIndex >= ReadBaroArrayMax) {
+					if (ReadBaroIndex >= READ_BARO_ARRAY_MAX) {
 						StatusBar1->Panels->Items[2]->Text = "ReadBaroIndex at limit.";
-						sprintf(str, "ReadBaroIndex is %d. Limit is %d.", ReadBaroIndex, ReadBaroArrayMax);
+						sprintf(str, "ReadBaroIndex is %d. Limit is %d.", ReadBaroIndex, READ_BARO_ARRAY_MAX);
 						LogError(str);
 
 						// Keep behavior sane: we consumed the flag but can't store
@@ -474,12 +511,12 @@ void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket) {
 						try {
 							ReadBaroArray[ReadBaroIndex].Pressure = atof(&RcvStr[i][0]);
 
-							if (ReadBaroIndex < ReadBaroArrayMax) {
+							if (ReadBaroIndex < READ_BARO_ARRAY_MAX) {
 									++ReadBaroIndex;
 							}
 							else  {
 									StatusBar1->Panels->Items[2]->Text = "ReadBaroIndex at limit.";
-									sprintf(str, "ReadBaroIndex is %d. Limit is %d.", ReadBaroIndex, ReadBaroArrayMax);
+									sprintf(str, "ReadBaroIndex is %d. Limit is %d.", ReadBaroIndex, READ_BARO_ARRAY_MAX);
 									LogError(str);
 							}
 						}
@@ -495,10 +532,10 @@ void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket) {
 							strncpy(ReadBaroArray[ReadBaroIndex].CaptureStr, &RcvStr[i][0], sizeof(ReadBaroArray[ReadBaroIndex].CaptureStr) - 1);
 							ReadBaroArray[ReadBaroIndex].CaptureStr[sizeof(ReadBaroArray[ReadBaroIndex].CaptureStr) - 1] = '\0';
 
-							if (ReadBaroIndex < ReadBaroArrayMax) ++ReadBaroIndex;
+							if (ReadBaroIndex < READ_BARO_ARRAY_MAX) ++ReadBaroIndex;
 							else {
 								StatusBar1->Panels->Items[2]->Text = "ReadBaroIndex at limit.";
-								sprintf(str,"ReadBaroIndex is %d. Limit is %d.", ReadBaroIndex, ReadBaroArrayMax); // (I removed the stray ] )
+								sprintf(str,"ReadBaroIndex is %d. Limit is %d.", ReadBaroIndex, READ_BARO_ARRAY_MAX); // (I removed the stray ] )
 								LogError(str);
 							}
 						}
@@ -537,47 +574,126 @@ void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket) {
 
 void __fastcall TForm1::TcSocketRead(TObject *Sender, TCustomWinSocket *Socket)
 {
-    char ch;
+	char ch;
+	char str[32];
 
-    while (Socket->ReceiveBuf(&ch, 1) != -1)
-    {
-        if (ch == 13 || ch == 10) // CR or LF ends a line
-        {
-            if (TcRcvIndex > 0)
-            {
-                TcRcvStr[TcRcvIndex] = 0;
+	// Read the byte sent from the Temp Controller
+	while (Socket->ReceiveBuf(&ch, 1) != -1)
+	{
+		// Have we reached the end of the line sent
+		if (ch == 13 || ch == 10) // CR or LF ends a line
+		{
+			//  Yes - Is there any data in the receive buffer
+			if (TcRcvIndex > 0)
+			{
+				// Yes - terminate the line with a \0
+				TcRcvStr[TcRcvIndex] = 0;
 
-                // LOG RX (same mechanism as Digi)
-                LogRxTextLogged(Socket, TcRcvStr);
+				// Log the command
+				LogRxTextLogged(Socket, TcRcvStr);
 
-                // For now: show it / parse it
-                // MemoMain->Lines->Add(AnsiString("TC: ") + TcRcvStr);
+				// Update the GUI with the current temperature
+				// TODO FIX HARDCODED UNITS - KPD
+				sprintf(str,"%0.1f °C", atof(TcRcvStr));
+				LabelTemperature->Caption = str;
 
-                TcRcvIndex = 0;
-            }
-            continue;
-        }
+				// Reset our index so we are ready to receive the next msg from TC
+				TcRcvIndex = 0;
+			}
+			// Keep waiting for another response from TC
+			continue;
+		}
+		// Character was read that was not the end of response
+		// Don't overrun buffer
+		if (TcRcvIndex < RCV_STR_LEN - 1)
+		{
+			// Store char into response buffer
+			TcRcvStr[TcRcvIndex++] = ch;
+		}
+		else
+		{
+			// log the issue
+			LogRxTextLogged(Socket, "TEMP CONTROL RECEIVE BUFFER OVERRUBN\n");
 
-				if (TcRcvIndex < (int)sizeof(TcRcvStr) - 1)
-            TcRcvStr[TcRcvIndex++] = ch;
-        else
-            TcRcvIndex = 0; // overflow: reset
-    }
+			// Make sure the overflowing buffer is terminated
+			TcRcvStr[RCV_STR_LEN - 1] = 0;
+
+			// Log whatever is in the buffer that's overflowed
+			LogRxTextLogged(Socket, TcRcvStr);
+
+			// overflow: reset
+			TcRcvIndex = 0;
+		}
+	}
+}
+//---------------------------------------------------------------------------
+
+
+void __fastcall TForm1::PcSocketRead(TObject *Sender, TCustomWinSocket *Socket)
+{
+		char ch;
+		char str[32];
+
+		// Read the byte sent from the Pressure Controller
+		while (Socket->ReceiveBuf(&ch, 1) != -1)
+		{
+				// Have we reached the end of the line sent
+				if (ch == 13 || ch == 10) // CR or LF ends a line
+				{
+						//  Yes - Is there any data in the receive buffer
+						if (PcRcvIndex > 0)
+						{
+								// Yes - terminate the line with a \0
+								PcRcvStr[PcRcvIndex] = 0;
+
+								// LOG RX (same mechanism as Digi)
+								LogRxTextLogged(Socket, PcRcvStr);
+
+								// PRESSURE CONTROLLER
+								sprintf(str,"%0.1f ??", atof(PcRcvStr));
+								LabelPressure->Caption = str;
+
+								PcRcvIndex = 0;
+						}
+						continue;
+				}
+			// Character was read that was not the end of response
+			// Don't overrun buffer
+			if (PcRcvIndex < RCV_STR_LEN - 1)
+			{
+				// Store char into response buffer
+				PcRcvStr[PcRcvIndex++] = ch;
+			}
+			else
+			{
+				// log the issue
+				LogRxTextLogged(Socket, "PRESSURE CONTROL RECEIVE BUFFER OVERRUBN\n");
+
+				// Make sure the overflowing buffer is terminated
+				PcRcvStr[RCV_STR_LEN - 1] = 0;
+
+				// Log whatever is in the buffer that's overflowed
+				LogRxTextLogged(Socket, PcRcvStr);
+
+				// overflow: reset
+				PcRcvIndex = 0;
+			}
+		}
 }
 
 //---------------------------------------------------------------------------
 
 void __fastcall TForm1::SocketConnect(TObject *Sender, TCustomWinSocket *Socket) {
-  //char str[100];
+	//char str[100];
 
-  int i = Socket->RemotePort - 2101;
-  if(Socket->RemoteAddress == EditAddr2->Text) i += 16;
-  else if(Socket->RemoteAddress == EditAddr3->Text) i += 32;
-  else if(Socket->RemoteAddress == EditAddr4->Text) i += 48;
+	int i = Socket->RemotePort - 2101;
+	if(Socket->RemoteAddress == EditAddr2->Text) i += 16;
+	else if(Socket->RemoteAddress == EditAddr3->Text) i += 32;
+	else if(Socket->RemoteAddress == EditAddr4->Text) i += 48;
 
-  SocketLED[i]->Brush->Color = clLime;
-  if(i == (CSpinEditPortMon->Value - 1)) ShapePortMonLED->Brush->Color = clLime;
-  if(i == (CSpinEditPortT1Chk->Value - 1)) {
+	SocketLED[i]->Brush->Color = clLime;
+	if(i == (CSpinEditPortMon->Value - 1)) ShapePortMonLED->Brush->Color = clLime;
+	if(i == (CSpinEditPortT1Chk->Value - 1)) {
     ShapeT1LED->Brush->Color = clLime;
     ButtonGetTable->Enabled = true;
   }
@@ -650,39 +766,41 @@ void __fastcall TForm1::TcSocketConnect(TObject *Sender, TCustomWinSocket *Socke
 		if (TcLED) {
 			TcLED->Brush->Color = clLime;
 		}
-		/*SendTextLogged(Socket, "UNIT:TEMP?\n");
+		SockTracer::Log(TraceKind::Note, "TcSocketConnect() callback\n");
+
+		/*SendTextLogged(Socket, "UNIT:TEMP?");
 
 		Sleep(5000);
 
 		// Set the units
 		if (RadioButtonCelsius->Checked == true) {
-			SendTextLogged(Socket, "UNIT:TEMP C\n");
+			SendTextLogged(Socket, "UNIT:TEMP C");
 		}
 		else if (RadioButtonFahrenheit->Checked == true) {
-			SendTextLogged(Socket, "UNIT:TEMP F\n");
+			SendTextLogged(Socket, "UNIT:TEMP F");
 		}
 		Sleep(5000);
 
-		SendTextLogged(Socket, "UNIT:TEMP?\n");  */
+		SendTextLogged(Socket, "UNIT:TEMP?");  */
 
 
 
 		// Debug: identify query immediately after connect (logged)
-		/*SendTextLogged(Socket, "*IDN?\r\n");
+		/*SendTextLogged(Socket, "*IDN?");
     Sleep(1000);
-		SendTextLogged(Socket, ":SOURCE:CLOOP1:PVALUE?\r\n");
+		SendTextLogged(Socket, ":SOURCE:CLOOP1:PVALUE?");
 		Sleep(1000);
-		SendTextLogged(Socket, ":SOURCE:CLOOP1:SPOINT 43.2\r\n");
+		SendTextLogged(Socket, ":SOURCE:CLOOP1:SPOINT 43.2");
 		Sleep(1000);
-		SendTextLogged(Socket, ":SOURCE:CLOOP1:SPOINT?\r\n");
+		SendTextLogged(Socket, ":SOURCE:CLOOP1:SPOINT?");
 		Sleep(1000);
-		SendTextLogged(Socket, ":OUTPUT1 ON\r\n");
+		SendTextLogged(Socket, ":OUTPUT1 ON");
 		Sleep(1000);
-		SendTextLogged(Socket, "OUTPUT1?\r\n");
+		SendTextLogged(Socket, "OUTPUT1?");
 		Sleep(1000);
-		SendTextLogged(Socket, ":OUTPUT1 OFF\r\n");
+		SendTextLogged(Socket, ":OUTPUT1 OFF");
 		Sleep(1000);
-		SendTextLogged(Socket, "OUTPUT1?\r\n");*/ //   KAPD
+		SendTextLogged(Socket, "OUTPUT1?");*/ //   KAPD
 
 }
 
@@ -755,7 +873,7 @@ void __fastcall TForm1::PressureGet() {
 
 	if(Active(PcSocket)) {
     try {
-		SendTextLogged(PcSocket->Socket, ":sens?\n");
+		SendTextLogged(PcSocket->Socket, ":sens?", SendTermination::CR);
 	}
 	catch(...) {
 			LogError("ERROR: Exception in PressureGet().");
@@ -771,7 +889,7 @@ void __fastcall TForm1::PressureGet() {
 void __fastcall TForm1::TemperatureGet() {
 	if(Active(TcSocket)) {
     try {
-			int status = SendTextLogged(TcSocket->Socket, ":SOURCE:CLOOP1:PVALUE?\n");     // D1V
+			int status = SendTextLogged(TcSocket->Socket, ":SOURCE:CLOOP1:PVALUE?", SendTermination::LF);     // D1V
 			if (status <= 0) {
 				LogError("ERROR: writting to socket");
 			}
@@ -840,9 +958,9 @@ bool __fastcall TForm1::ConvertBaroRead() {
 	for(i=1; i<(LineCount); i++) {
 
 		// PATCH 4: guard BEFORE writing ReadBaroArray[ReadBaroIndex]
-		if (ReadBaroIndex >= ReadBaroArrayMax) {
+		if (ReadBaroIndex >= READ_BARO_ARRAY_MAX) {
 				StatusBar1->Panels->Items[2]->Text = "ReadBaroArray full (ConvertBaroRead).";
-				sprintf(str, "ConvertBaroRead overflow: ReadBaroIndex=%d, max=%d", ReadBaroIndex, ReadBaroArrayMax);
+				sprintf(str, "ConvertBaroRead overflow: ReadBaroIndex=%d, max=%d", ReadBaroIndex, READ_BARO_ARRAY_MAX);
 				LogError(str);
 				break; // stop converting more lines
 		}
@@ -890,7 +1008,7 @@ void ClearReadBaroArray() {
 	int i;
 	ReadBaroIndex = 0;
 
-	for(i=0; i<ReadBaroArrayMax; i++) {
+	for(i=0; i<READ_BARO_ARRAY_MAX; i++) {
 
     ReadBaroArray[i].PortNum = 0;
     ReadBaroArray[i].RefTemp = 0.0;
@@ -951,23 +1069,29 @@ void SetScriptBar() {
     ++ScriptStepCount;
     //Form1->ProgressBarScript->Position = ScriptStepCount;
 
-    ptr = strtok(LineString, " \t"); // scan line, skip ' ' and '\t'
+		ptr = strtok(LineString, " "); // scan line, skip ' ' and '\t'
 
-    //sprintf(str,"%s",ptr);
-    //Memo2->Lines->Add(str);
+		if (ptr == NULL)
+		{
+				sprintf(str,"Parsing Err[%s]", LineString);
+				Form1->LogError(str);
+				break;
+		}
+		//sprintf(str,"%s",ptr);
+		//Memo2->Lines->Add(str);
 
-    if(strcmp("GOSUB",ptr) == 0) {
+		if(strcmp("GOSUB",ptr) == 0) {
 
-      ptr = strtok(NULL, " \t"); // scan line, skip ' ' and '\t'
+			ptr = strtok(NULL, " \t"); // scan line, skip ' ' and '\t'
 
-      if(Form1->NoParam(ptr)) {
-        Form1->LogError("ERROR: SetScriptBar(), Missing GOSUB Parameter.");
-        break;
-      }
+			if(Form1->NoParam(ptr)) {
+				Form1->LogError("ERROR: SetScriptBar(), Missing GOSUB Parameter.");
+				break;
+			}
 
-      NewIndex = Form1->FindSubIndex(ptr);
-      //sprintf(str,"NewIndex: %d String: %s", NewIndex, ptr);
-      //Form1->MemoMain->Lines->Add(str);
+			NewIndex = Form1->FindSubIndex(ptr);
+			//sprintf(str,"NewIndex: %d String: %s", NewIndex, ptr);
+			//Form1->MemoMain->Lines->Add(str);
 
       if(NewIndex) {
         //Memo2->Lines->Add(AStr + ScriptStringList->Strings[i]);
@@ -1089,15 +1213,15 @@ bool __fastcall TForm1::PressureSet(float pressure) {
   if(pressure < 300.0 || pressure > 1200.0) {
     LogError("ERROR: PressureSet(), Pressure Out of Range (300 to 1200).");
     return true;
-  }
+	}
 
 
 	if(Active(PcSocket)) {
     try {
-			sprintf(str,":sour %0.2f\n", pressure);
-			SendTextLogged(PcSocket->Socket, str);
+			sprintf(str,":sour %0.2f", pressure);
+			SendTextLogged(PcSocket->Socket, str, SendTermination::CR);
 			WaitCmd(2);
-			SendTextLogged(PcSocket->Socket, ":outp 1\n");
+			SendTextLogged(PcSocket->Socket, ":outp 1",  SendTermination::CR);
 
       ProgressBarMax = ProgressBarCountDown->Max;
       ProgressBarPos = ProgressBarCountDown->Position;
@@ -1164,9 +1288,9 @@ void __fastcall TForm1::PressureStop() {
 
 	if(Active(PcSocket)) {
     try {
-			SendTextLogged(PcSocket->Socket, ":outp 0\n");
+			SendTextLogged(PcSocket->Socket, ":outp 0", SendTermination::CR);
 			WaitCmd(2);
-			SendTextLogged(PcSocket->Socket, ":loc\n");
+			SendTextLogged(PcSocket->Socket, ":loc", SendTermination::CR);
 		}
     catch(...) {
       LogError("ERROR: Exception in PressureStop().");
@@ -1183,9 +1307,9 @@ void __fastcall TForm1::PressureInit() {
 
 	if(Active(PcSocket)) {
     try {
-			SendTextLogged(PcSocket->Socket, ":outp 0\n");
+			SendTextLogged(PcSocket->Socket, ":outp 0", SendTermination::CR);
 			WaitCmd(1);
-			SendTextLogged(PcSocket->Socket, ":unit mbar\n");
+			SendTextLogged(PcSocket->Socket, ":unit mbar", SendTermination::CR);
 		}
 		catch(...) {
       LogError("ERROR: Exception in PressureInit().");
@@ -1202,8 +1326,8 @@ void __fastcall TForm1::TemperatureSetUnits(char units) {
 
 	if(TcSocket->Active) {
 		try {
-			sprintf(str,":UNIT:TEMP %c\n", units);
-			if (SendTextLogged(TcSocket->Socket, str) < 1) {
+			sprintf(str,":UNIT:TEMP %c", units);
+			if (SendTextLogged(TcSocket->Socket, str,  SendTermination::LF) < 1) {
 				LogError("ERROR: TempSet(), TX SCPI Set Units Cmd Failed");
 			}
 		}
@@ -1226,12 +1350,12 @@ void __fastcall TForm1::TemperatureSet(float temperature) {
 
 	if(TcSocket->Active) {
 		try {
-			sprintf(str,":SOURCE:CLOOP1:SPOINT %4.1f\n", temperature);      // L1S
-			if (SendTextLogged(TcSocket->Socket, str) < 1) {
+			sprintf(str,":SOURCE:CLOOP1:SPOINT %4.1f", temperature);      // L1S
+			if (SendTextLogged(TcSocket->Socket, str,  SendTermination::LF) < 1) {
 				LogError("ERROR: TempSet(), TX SCPI Set Cmd Failed");
 			}
 			WaitCmd(2);
-			if (SendTextLogged(TcSocket->Socket, ":SOURCE:CLOOP1:PVALUE?\n") < 1) {       // RM
+			if (SendTextLogged(TcSocket->Socket, ":SOURCE:CLOOP1:PVALUE?",  SendTermination::LF) < 1) {       // RM
 				LogError("ERROR: TempSet(), Tx SCPI Query Cmd Failed");
 			}
 		}
@@ -1250,7 +1374,7 @@ void __fastcall TForm1::TemperatureInit() {
 
 	if(Active(TcSocket)) {
     try {
-			SendTextLogged(TcSocket->Socket, ":OUTPUT1 ON\n");     // RM
+			SendTextLogged(TcSocket->Socket, ":OUTPUT1:STATE ON",  SendTermination::LF);     // RM
 		}
     catch(...) {
       LogError("ERROR: Exception in TempInit().");
@@ -1266,7 +1390,7 @@ void __fastcall TForm1::TemperatureStop() {
 
 	if(Active(TcSocket)) {
 		try {
-			SendTextLogged(TcSocket->Socket, ":OUTPUT1 OFF\n");    // S
+			SendTextLogged(TcSocket->Socket, ":PROGRAM:STATE STOP",  SendTermination::LF);    // S
 		}
     catch(...) {
       LogError("ERROR: Exception in TempStop().");
@@ -1284,22 +1408,22 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
   if(Port == 0) { // SEND TO ALL PORTS
     ptr = (char*)str;
     while(*ptr) {
-      for(i=0; i<DigiCommChannels; i++) {
+			for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
 				if(CommBox[i]->Checked) {
 					if(Active(CommSocket[i])) {
 						try {
-              LocStr[0] = *ptr;
-              LocStr[1] = 0;
-							SendTextLogged(CommSocket[i]->Socket, LocStr);   // KAPD???
+							SendTextLogged(CommSocket[i]->Socket, LocStr, SendTermination::LF);
 						}
             catch(...) {
 							sprintf(LocStr,"ERROR: Exception in SendBaroMsg() [%i].", i);
-              LogError(str);
+							LogError(str);
+							return;
             }
           }
           else {
             sprintf(LocStr,"ERROR: BaroSendMsg(), Baro Comm Port[%i] Closed.", i);
-            LogError(str);
+						LogError(str);
+						return;
           }
 				}
       }
@@ -1310,22 +1434,24 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
     if(EnableBaroSendCharDelay->Checked) Sleep(100);
 
     if(*str != 27 ) { // If not ESC, send CR
-      for(i=0; i<DigiCommChannels; i++) {
+			for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
 				if(CommBox[i]->Checked) {
 					if(Active(CommSocket[i])) {
             try {
-              LocStr[0] = '\r';
-              LocStr[1] = 0;
-							SendTextLogged(CommSocket[i]->Socket, LocStr);       // KAPD???
+							//LocStr[0] = '\r';
+							//LocStr[1] = 0;
+							SendTextLogged(CommSocket[i]->Socket, "", SendTermination::LF);       // KAPD???
 						}
             catch(...) {
               sprintf(LocStr,"ERROR: Exception in SendBaroMsg() [%i].", i);
-              LogError(str);
+							LogError(str);
+							return;
             }
           }
           else {
             sprintf(LocStr,"ERROR: BaroSendMsg(), Baro Comm Port[%i] Closed.", i);
-            LogError(str);
+						LogError(str);
+						return;
           }
         }
 			}
@@ -1337,18 +1463,20 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
     while(*ptr) {
 			if(Active(CommSocket[i])) {
 				try {
-					LocStr[0] = *ptr;
-					LocStr[1] = 0;
-					SendTextLogged(CommSocket[i]->Socket, LocStr);      // KAPD????
+					//LocStr[0] = *ptr;
+					//LocStr[1] = 0;
+					SendTextLogged(CommSocket[i]->Socket, LocStr, SendTermination::LF);      // KAPD????
 				}
 				catch(...) {
 					sprintf(LocStr,"ERROR: Exception in SendBaroMsg() [%i].", i);
 					LogError(str);
+					return;
 				}
 			}
 			else {
 				sprintf(LocStr,"ERROR: BaroSendMsg(), Baro Comm Port[%i] Closed.", i);
 				LogError(str);
+				return;
 			}
 			++ptr;
 			if(EnableBaroSendCharDelay->Checked) Sleep(100);
@@ -1360,18 +1488,20 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
 			if(CommBox[i]->Checked) {
 				if(Active(CommSocket[i])) {
           try {
-            LocStr[0] = '\r';
-            LocStr[1] = 0;
-						SendTextLogged(CommSocket[i]->Socket, LocStr);     // KAPD????
+						//LocStr[0] = '\r';
+						//LocStr[1] = 0;
+						SendTextLogged(CommSocket[i]->Socket, "", SendTermination::LF);     // KAPD????
 					}
           catch(...) {
             sprintf(LocStr,"ERROR: Exception in SendBaroMsg() [%i].", i);
-            LogError(str);
+						LogError(str);
+						return;
           }
         }
         else {
           sprintf(LocStr,"ERROR: BaroSendMsg(), Baro Comm Port[%i] Closed.", i);
-          LogError(str);
+					LogError(str);
+          return;
         }
       }
     }
@@ -1388,7 +1518,7 @@ void __fastcall TForm1::BaroRead(int Port){
 
   if(Port) BaroReadFlag[Port-1] = true;
   else {
-    for(i=0; i<DigiCommChannels; i++) {
+		for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
 			BaroReadFlag[i] = true;
 		}
   }
@@ -1837,7 +1967,7 @@ bool __fastcall TForm1::ParseLine() {
 					WaitCount = atoi(ptr);
 
 					if(EnableSerialCmdOutput->Checked) {
-						sprintf(str,"%.1f %.1f\r", CurrentTemp, CurrentPressure);
+						sprintf(str,"%.1f %.1f", CurrentTemp, CurrentPressure);
 						SendSerial(str);
 					}
 
@@ -2062,7 +2192,7 @@ void __fastcall TForm1::Timer1Timer(TObject *Sender)
   }
   else EditErrBox->Visible = false;
 
-  for(i=0; i<DigiCommChannels; i++) ++NoActivityTime[i];
+	for(i=0; i<DIGI_COMMAND_CHANNELS; i++) ++NoActivityTime[i];
 
   if(FormTempPressLog->Enabled1->Checked && Count==0) {
 		AnsiString ts = Now().FormatString("mm/dd hh:nn:ss");
@@ -2436,191 +2566,229 @@ void DrawGrid() {
 
 void __fastcall TForm1::ButtonDrawGraphClick(TObject *Sender)
 {
-  int i, j, PressIndex, TempIndex, PressCount, MaxPressCount;
-  float  fVal, PressAvg, PressStdev, PressSum, MaxErr, MinErr, ErrLimit,
-         PressDiff[30][20], PressRef[20], TempRef[30],
-         fX, fY, xMult, xOffset, yMult, yOffset, LastPress;
+	int i, j, PressIndex, TempIndex, PressCount, MaxPressCount;
+	float  fVal, PressAvg, PressStdev, PressSum, MaxErr, MinErr, ErrLimit,
+				 PressDiff[30][20], PressRef[20], TempRef[30],
+				 fX, fY, xMult, xOffset, yMult, yOffset, LastPress;
 
-  TCanvas *c;
-  AnsiString SerialNumberStr;
-  char str[100];
-  DWORD PenColor;
-  BYTE ColorCode;
+	TCanvas *c;
+	AnsiString SerialNumberStr;
+	char str[100];
+	DWORD PenColor;
+	BYTE ColorCode;
 
-  if(ReadBaroIndex == 0) {
-	Application->MessageBox(
-	  L"There are no data.",
-	  L"Draw Baro Graph",
-      MB_OK);
-    return;
+	try
+	{
+		if(ReadBaroIndex == 0) {
+			Application->MessageBox(L"There are no data.", L"Draw Baro Graph", MB_OK);
+			return;
+		}
+
+		float  fPressRange, fLowScaleRef;
+
+		switch(RadioGroupGraphSensorType->ItemIndex) {
+			//case 0: fPressRange = 700.0;
+			//        fLowScaleRef = 400.0;
+			//        break;
+
+			case 0:
+			case 1: fPressRange = 600.0;
+							fLowScaleRef = 500.0;
+							break;
+
+			case 2: fPressRange = 500.0;
+							fLowScaleRef = 600.0;
+							break;
+
+			case 3: fPressRange = 700.0;
+							fLowScaleRef = 400.0;
+							break;
+		}
+
+		MemoMain->Clear();
+		ImageCalCheck->Canvas->FillRect(ImageCalCheck->Canvas->ClipRect);
+
+		xMult = (float)ImageCalCheck->Width/fPressRange; // 500.0 to 1100.0 hPa or 600 to 1100
+		yMult = -(float)ImageCalCheck->Height/1.0; // ±0.5 hPa
+		yOffset = (float)ImageCalCheck->Height/2.0;
+
+		PressIndex = TempIndex = 0;
+		PressCount = 0;
+		MaxErr = -9999.9;
+		MinErr = 9999.9;
+
+		MaxPressCount = 0;
+		LastPress = 0.0;
+
+		for(i=0; i<ReadBaroIndex; i++) {
+			if(ReadBaroArray[i].PortNum == CSpinEditCalCheckPort->Value) {
+
+				fVal = ReadBaroArray[i].RefPressure;
+
+				if(fVal-LastPress > 10.0) {
+					LastPress = fVal;
+					++MaxPressCount;
+
+					// Check for out of bounds
+					if (MaxPressCount <= 0) {
+							Application->MessageBox(L"No pressure steps detected (MaxPressCount=0).", L"Draw Baro Graph", MB_OK);
+							return;
+					}
+					if (MaxPressCount > 20) {
+							Application->MessageBox(L"Too many pressure steps (MaxPressCount > 20).", L"Draw Baro Graph", MB_OK);
+							return;
+					}
+					//sprintf(str,"%d %d", i, MaxPressCount);
+					//MemoMain->Lines->Add(str);
+				}
+
+			}
+		}
+
+		for(i=0; i<ReadBaroIndex; i++) {
+			if(ReadBaroArray[i].PortNum == CSpinEditCalCheckPort->Value) {
+
+				if(CheckBoxOverride->Checked) SerialNumberStr = EditSNOverride->Text;
+				else {
+					SerialNumberStr = ReadBaroArray[i].SnStr;
+					EditSNOverride->Text = SerialNumberStr;
+				}
+
+				++PressCount;
+
+				PressRef[PressIndex] = ReadBaroArray[i].RefPressure;
+				TempRef[TempIndex] = ReadBaroArray[i].RefTemp;
+
+				fVal = ReadBaroArray[i].Pressure - ReadBaroArray[i].RefPressure;
+
+				if(CheckBoxOverride->Checked) fVal += StrToFloat(EditOffsetOverride->Text);
+
+				PressDiff[TempIndex][PressIndex] = fVal;
+				if(fVal < MinErr) MinErr = fVal;
+				if(fVal > MaxErr) MaxErr = fVal;
+
+				if(++PressIndex >= MaxPressCount) {
+					PressIndex = 0;
+					++TempIndex;
+
+					//sprintf(str,"%d %d", i, TempIndex);
+					//MemoMain->Lines->Add(str);
+
+				}
+			}
+		}
+		// Check for out of bounds
+		if (TempIndex <= 0) {
+				Application->MessageBox(L"No temperature groups detected (TempIndex=0).", L"Draw Baro Graph", MB_OK);
+				return;
+		}
+
+		if (TempIndex > 30) {
+				Application->MessageBox(L"Too many temperature groups (TempIndex > 30).", L"Draw Baro Graph", MB_OK);
+				return;
+		}
+
+		//sprintf(str, "MaxPressCount, PressCount, Temp Index: %d %d %d", MaxPressCount, PressCount, TempIndex);
+		//MemoMain->Lines->Add(str);
+
+		if(PressCount == 0) {
+			sprintf(str, "No Samples for Port %li.", CSpinEditCalCheckPort->Value);
+			Application->MessageBoxW(UnicodeString(str).c_str(), L"Draw Baro Cal Graph", MB_OK);
+			return;
+		}
+
+		DrawGrid();
+
+		c = ImageCalCheck->Canvas;
+
+		PressSum = 0.0;
+		PressCount = 0;
+
+		for(i=0; i<TempIndex; i++) { // Temp
+
+			c->Pen->Width = 2;
+
+			// Don't allow divide by zero
+			float denom = (TempIndex > 1) ? (float)(TempIndex - 1) : 1.0f;
+			if(RadioButtonColor->Checked)
+				c->Pen->Color = CreateColor((float)i / denom);
+			else {
+				ColorCode = 68+(i*136)/TempIndex;
+				c->Pen->Color = (TColor)RGB(ColorCode, ColorCode, ColorCode);
+			}
+
+			/*
+			switch(i) {
+				case 0: c->Pen->Color = 0x00FF0000; break;
+				case 1: c->Pen->Color = 0x0000FF00; break;
+				case 2: c->Pen->Color = 0x0000FFFF; break;
+				case 3: c->Pen->Color = 0x000088FF; break;
+				case 4: c->Pen->Color = 0x000000FF; break;
+			}
+			*/
+
+			for(j=0; j<MaxPressCount; j++) { // Pressure
+
+				fX = (PressRef[j] - fLowScaleRef) * xMult;
+				fY = PressDiff[i][j] * yMult + yOffset;
+
+				PressSum += PressDiff[i][j];
+				++PressCount;
+
+				//sprintf(str,"%03.1f %02.2f", ReadBaroArray[i].RefTemp, PressDiff);
+				//MemoMain->Lines->Add(str);
+
+				if(j==0) c->MoveTo((int)fX, (int)fY);
+				else c->LineTo((int)fX, (int)fY);
+			}
+		}
+		// Check for divide by zero
+		if (PressCount <= 0) {
+				Application->MessageBox(L"No points to compute average (PressCount=0).", L"Draw Baro Graph", MB_OK);
+				return;
+		}
+		PressAvg = PressSum / (float)PressCount;
+
+		PressSum = 0.0;
+
+		for(i=0; i<TempIndex; i++) { // Temp
+			for(j=0; j<MaxPressCount; j++) { // Pressure
+				fVal = PressDiff[i][j] - PressAvg;
+
+				//sprintf(str,"%0.2f", fVal);
+				//MemoMain->Lines->Add(str);
+
+				PressSum += (fVal * fVal);
+			}
+		}
+
+		if(PressCount)
+			PressStdev = sqrt(PressSum/(float)PressCount);
+		else
+			PressStdev = 0.0;
+
+		sprintf(str,"Avg: %0.2f", PressAvg);
+		MemoMain->Lines->Add(str);
+		sprintf(str,"Std: %0.2f", PressStdev);
+		MemoMain->Lines->Add(str);
+
+		ErrLimit = EditErrLimit->Text.ToDouble();
+
+		if(MaxErr <= ErrLimit && MinErr >= -ErrLimit)
+			MemoMain->Lines->Add("Serial Number " + SerialNumberStr + ": PASS");
+		else MemoMain->Lines->Add("Serial Number " + SerialNumberStr + ": FAIL");
   }
-
-  float  fPressRange, fLowScaleRef;
-
-  switch(RadioGroupGraphSensorType->ItemIndex) {
-    //case 0: fPressRange = 700.0;
-    //        fLowScaleRef = 400.0;
-    //        break;
-
-    case 0:
-    case 1: fPressRange = 600.0;
-            fLowScaleRef = 500.0;
-            break;
-
-    case 2: fPressRange = 500.0;
-            fLowScaleRef = 600.0;
-            break;
-
-    case 3: fPressRange = 700.0;
-            fLowScaleRef = 400.0;
-            break;
+  catch (const System::Sysutils::Exception &e)
+  {
+    Application->MessageBoxW(
+			(L"Exception in ButtonDrawGraphClick:\r\n" + e.ClassName() + L"\r\n" + e.Message).c_str(),
+      L"Draw Baro Graph", MB_OK | MB_ICONERROR);
   }
-
-  MemoMain->Clear();
-  ImageCalCheck->Canvas->FillRect(ImageCalCheck->Canvas->ClipRect);
-
-  xMult = (float)ImageCalCheck->Width/fPressRange; // 500.0 to 1100.0 hPa or 600 to 1100
-  yMult = -(float)ImageCalCheck->Height/1.0; // ±0.5 hPa
-  yOffset = (float)ImageCalCheck->Height/2.0;
-
-  PressIndex = TempIndex = 0;
-  PressCount = 0;
-  MaxErr = -9999.9;
-  MinErr = 9999.9;
-
-  MaxPressCount = 0;
-  LastPress = 0.0;
-
-  for(i=0; i<ReadBaroIndex; i++) {
-    if(ReadBaroArray[i].PortNum == CSpinEditCalCheckPort->Value) {
-
-      fVal = ReadBaroArray[i].RefPressure;
-
-      if(fVal-LastPress > 10.0) {
-        LastPress = fVal;
-        ++MaxPressCount;
-        //sprintf(str,"%d %d", i, MaxPressCount);
-        //MemoMain->Lines->Add(str);
-      }
-
-    }
+  catch (...)
+  {
+    Application->MessageBox(L"Unknown exception in ButtonDrawGraphClick.", L"Draw Baro Graph",
+                            MB_OK | MB_ICONERROR);
   }
-
-  for(i=0; i<ReadBaroIndex; i++) {
-    if(ReadBaroArray[i].PortNum == CSpinEditCalCheckPort->Value) {
-
-      if(CheckBoxOverride->Checked) SerialNumberStr = EditSNOverride->Text;
-      else {
-        SerialNumberStr = ReadBaroArray[i].SnStr;
-        EditSNOverride->Text = SerialNumberStr;
-      }
-
-      ++PressCount;
-
-      PressRef[PressIndex] = ReadBaroArray[i].RefPressure;
-      TempRef[TempIndex] = ReadBaroArray[i].RefTemp;
-
-      fVal = ReadBaroArray[i].Pressure - ReadBaroArray[i].RefPressure;
-
-      if(CheckBoxOverride->Checked) fVal += StrToFloat(EditOffsetOverride->Text);
-
-      PressDiff[TempIndex][PressIndex] = fVal;
-      if(fVal < MinErr) MinErr = fVal;
-      if(fVal > MaxErr) MaxErr = fVal;
-
-      if(++PressIndex >= MaxPressCount) {
-        PressIndex = 0;
-        ++TempIndex;
-        //sprintf(str,"%d %d", i, TempIndex);
-        //MemoMain->Lines->Add(str);
-
-      }
-    }
-  }
-
-  //sprintf(str, "MaxPressCount, PressCount, Temp Index: %d %d %d", MaxPressCount, PressCount, TempIndex);
-  //MemoMain->Lines->Add(str);
-
-  if(PressCount == 0) {
-		sprintf(str, "No Samples for Port %li.", CSpinEditCalCheckPort->Value);
-		Application->MessageBoxW(UnicodeString(str).c_str(), L"Draw Baro Cal Graph", MB_OK);
-		return;
-	}
-
-	DrawGrid();
-
-  c = ImageCalCheck->Canvas;
-
-  PressSum = 0.0;
-  PressCount = 0;
-
-	for(i=0; i<TempIndex; i++) { // Temp
-
-    c->Pen->Width = 2;
-
-    if(RadioButtonColor->Checked) c->Pen->Color = CreateColor((float)i/(float)(TempIndex-1));
-    else {
-      ColorCode = 68+(i*136)/TempIndex;
-      c->Pen->Color = (TColor)RGB(ColorCode, ColorCode, ColorCode);
-    }
-
-    /*
-    switch(i) {
-      case 0: c->Pen->Color = 0x00FF0000; break;
-      case 1: c->Pen->Color = 0x0000FF00; break;
-      case 2: c->Pen->Color = 0x0000FFFF; break;
-      case 3: c->Pen->Color = 0x000088FF; break;
-      case 4: c->Pen->Color = 0x000000FF; break;
-    }
-    */
-
-    for(j=0; j<MaxPressCount; j++) { // Pressure
-
-      fX = (PressRef[j] - fLowScaleRef) * xMult;
-      fY = PressDiff[i][j] * yMult + yOffset;
-
-      PressSum += PressDiff[i][j];
-      ++PressCount;
-
-      //sprintf(str,"%03.1f %02.2f", ReadBaroArray[i].RefTemp, PressDiff);
-      //MemoMain->Lines->Add(str);
-
-      if(j==0) c->MoveTo((int)fX, (int)fY);
-      else c->LineTo((int)fX, (int)fY);
-    }
-  }
-
-  PressAvg = PressSum/(float)PressCount;
-
-  PressSum = 0.0;
-
-  for(i=0; i<TempIndex; i++) { // Temp
-    for(j=0; j<MaxPressCount; j++) { // Pressure
-      fVal = PressDiff[i][j] - PressAvg;
-
-      //sprintf(str,"%0.2f", fVal);
-      //MemoMain->Lines->Add(str);
-
-      PressSum += (fVal * fVal);
-    }
-  }
-
-  if(PressCount)
-    PressStdev = sqrt(PressSum/(float)PressCount);
-  else
-    PressStdev = 0.0;
-
-  sprintf(str,"Avg: %0.2f", PressAvg);
-  MemoMain->Lines->Add(str);
-  sprintf(str,"Std: %0.2f", PressStdev);
-  MemoMain->Lines->Add(str);
-
-  ErrLimit = EditErrLimit->Text.ToDouble();
-
-  if(MaxErr <= ErrLimit && MinErr >= -ErrLimit)
-    MemoMain->Lines->Add("Serial Number " + SerialNumberStr + ": PASS");
-  else MemoMain->Lines->Add("Serial Number " + SerialNumberStr + ": FAIL");
-
 }
 //---------------------------------------------------------------------------
 
@@ -4022,7 +4190,7 @@ void __fastcall TForm1::ButtonPrintGraphAllClick(TObject *Sender)
   if(!PrintDialog1->Execute()) return;
   Printer()->Orientation = poPortrait;
 
-  for(i=1; i<=DigiCommChannels; i++) {
+	for(i=1; i<=DIGI_COMMAND_CHANNELS; i++) {
     if(i<15 || i>16) PrintGraph(i);
   }
 }
@@ -4094,9 +4262,20 @@ void __fastcall TForm1::ErrorLog1Click(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
+// NEEDED TO ALLOW TEXT ENTERED INTO A TEdit BOX TO BE HORIZONTALLY CENTERED
 void __fastcall TForm1::FormShow(TObject *Sender)
 {
-  //Application->ShowHint = true;
+  CenterSingleLineTEdit(EditBaroCmdPortMon);
+	CenterSingleLineTEdit(EditBaroCmdCalCheck);
+	CenterSingleLineTEdit(EditAddr1);
+	CenterSingleLineTEdit(EditAddr2);
+	CenterSingleLineTEdit(EditAddr3);
+	CenterSingleLineTEdit(EditAddr4);
+	CenterSingleLineTEdit(EditAddrPC);
+	CenterSingleLineTEdit(EditAddrTC);
+	CenterSingleLineTMaskEdit(MaskEditPressure);
+	CenterSingleLineTMaskEdit(MaskEditTemperature);
+	//Application->ShowHint = true;
 }
 //---------------------------------------------------------------------------
 
@@ -4232,7 +4411,7 @@ void __fastcall TForm1::ButtonAutoNumClick(TObject *Sender)
   if(result == IDNO) return;
 
   AnsiString serial = EditAutoPrefix->Text;   // converts UnicodeString -> AnsiString
-  for(i=StartPort; i<=DigiCommChannels; i++) {
+	for(i=StartPort; i<=DIGI_COMMAND_CHANNELS; i++) {
 	if(i!=15 && i!=16) {
 	  if(RadioGroupDigits->ItemIndex == 0)
 		sprintf(str,"%s%04i", serial.c_str(), AutoNum);
@@ -4249,75 +4428,12 @@ void __fastcall TForm1::ButtonAutoNumClick(TObject *Sender)
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::EditBaroCmdKeyPress(TObject *Sender, char &Key)
-{
-  char str[100];
-
-  if(Key==13) {
-
-    //int iVal = int(100.0 * atof(EditOffsetOverride->Text.c_str()));
-    int iPort = CSpinEditCalCheckPort->Value;
-
-	int result = Application->MessageBox(
-		  L"Send Barometer Command?",
-		  L"Cal Check",
-          MB_YESNO);
-
-    if(result == IDNO) return;
-
-	AnsiString serial = EditBaroCmd->Text;   // converts UnicodeString -> AnsiString
-	sprintf(str,"%s", serial.c_str());
-	MemoMain->Lines->Add(str);
-    BaroSendMsg(iPort, str);
-    WaitCmd(1);
-
-  }
-}
-//---------------------------------------------------------------------------
-
-void __fastcall TForm1::EditBaroCmd2KeyPress(TObject *Sender, char &Key)
+void __fastcall TForm1::EditBaroCmdPortMonKeyPress(TObject *Sender, char &Key)
 {
   if(Key==13) ButtonSendBaroCmd->Click();
 }
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::ButtonSendBaroCmdClick(TObject *Sender)
-{
-  char str[100];
-
-  //int iVal = int(100.0 * atof(EditOffsetOverride->Text.c_str()));
-
-  if(CheckBoxConfirmBaroCmd->Checked) {
-	int result = Application->MessageBox(
-		  L"Send Barometer Command?",
-		  L"Cal Check",
-          MB_YESNO);
-    if(result == IDNO) return;
-  }
-
-  AnsiString temp = EditBaroCmd->Text;   // converts UnicodeString -> AnsiString
-  sprintf(str,"%s", temp.c_str());
-  Screen->Cursor = crHourGlass;
-
-  if(strcmp("E", str) == 0) {
-    sprintf(str,"\x1B\x1B\x1B");
-    MemoMain->Lines->Add("ESCAPE SEQUENCE (\x1B\x1B\x1B)");
-  }
-  else MemoMain->Lines->Add(str);
-
-  if(CheckBoxSendAllPorts->Checked) {
-    BaroSendMsg(0, str);
-  }
-  else {
-    int iPort = CSpinEditPortMon->Value;
-    BaroSendMsg(iPort, str);
-  }
-
-  WaitCmd(1);
-  Screen->Cursor = crDefault;
-
-}
-//---------------------------------------------------------------------------
 
 void __fastcall TForm1::CheckBoxEnableAutoNumberClick(TObject *Sender)
 {
@@ -4426,7 +4542,7 @@ void __fastcall TForm1::ButtonPrintAllTablesClick(TObject *Sender)
 
   Printer()->BeginDoc();
 
-  for(i=1; i<=DigiCommChannels; i++) {
+	for(i=1; i<=DIGI_COMMAND_CHANNELS; i++) {
 		if((i<15 || i>16) && Active(CommSocket[i-1])) {
 
       Form1->CSpinEditPortT1Chk->Value = i;
@@ -4671,7 +4787,7 @@ bool __fastcall TForm1::Active(TClientSocket* sock)
 // CODE BEHIND - All TABS - Bottom Panel
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::ButtonStartClick(TObject *Sender)
+void __fastcall TForm1::ButtonStartScriptClick(TObject *Sender)
 {
 	int i, j, mrResult, ErrLine;
 	char str[100];
@@ -4702,7 +4818,7 @@ void __fastcall TForm1::ButtonStartClick(TObject *Sender)
 	ScriptIndex = 0;
   SubReturnCount = 0;
 
-  ButtonStart->Enabled = false;
+  ButtonStartScript->Enabled = false;
   ButtonPause->Enabled = true;
   ButtonStop->Enabled = true;
   ButtonDisconnect->Enabled = false;
@@ -4791,7 +4907,7 @@ void __fastcall TForm1::ButtonStartClick(TObject *Sender)
   if(EnableScriptEdit->Checked) MemoScript->ReadOnly = false;
   else MemoScript->ReadOnly = true;
 
-  ButtonStart->Enabled = true;
+  ButtonStartScript->Enabled = true;
   ButtonPause->Enabled = false;
   ButtonStop->Enabled = false;
   ButtonDisconnect->Enabled = true;
@@ -4975,7 +5091,7 @@ void __fastcall TForm1::ButtonSelectAllClick(TObject *Sender)
 {
 	int i;
 
-	for (int i = 0; i < DigiCommChannels; i++) {
+	for (int i = 0; i < DIGI_COMMAND_CHANNELS; i++) {
 		if (CommBox[i]) CommBox[i]->Checked = true;   // or false
 	}
 	if (PcBox) PcBox->Checked = true;
@@ -4988,7 +5104,7 @@ void __fastcall TForm1::ButtonDeselectAllClick(TObject *Sender)
 {
   int i;
 
-	for (int i = 0; i < DigiCommChannels; i++) {
+	for (int i = 0; i < DIGI_COMMAND_CHANNELS; i++) {
 		if (CommBox[i]) CommBox[i]->Checked = false;
 	}
 	if (PcBox) PcBox->Checked = false;
@@ -5001,7 +5117,7 @@ void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
   int i;
 	char str[200];
 
-	for(i=0; i<DigiCommChannels; i++) {
+	for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
 
 
     if(i<=15) CommSocket[i]->Address = EditAddr1->Text;
@@ -5062,7 +5178,7 @@ void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
 			PcSocket->Address = EditAddrPC->Text;
 			PcSocket->Port = 5025; // SCPI over TCP
 
-			//SendTextLogged(sprintf("ButtonConnectClick() PcSocket->Port %d\n", PcSocket->Port));
+			//SendTextLogged(sprintf("ButtonConnectClick() PcSocket->Port %d", PcSocket->Port));
 			if (Active(PcSocket)) PcSocket->Active = false;
 
 			try {
@@ -5089,7 +5205,7 @@ void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
 	ButtonConnect->Enabled = false;
 	ButtonDisconnect->Enabled = true;
 	ButtonGetCurrentValues->Enabled = true;
-	ButtonStart->Enabled = true;
+	ButtonStartScript->Enabled = true;
 
 	EditAddr1->Enabled = false;
 	EditAddr2->Enabled = false;
@@ -5117,7 +5233,7 @@ void __fastcall TForm1::ButtonDisconnectClick(TObject *Sender)
 
   MemoMain->Lines->Add(" ");
 
-  for(i=0; i<DigiCommChannels; i++) {
+	for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
 		if(Active(CommSocket[i])) CommSocket[i]->Active = false;
     //MemoMain->Lines->Add("Disconnect Port " + IntToStr(i+1));
     Application->ProcessMessages();
@@ -5133,7 +5249,7 @@ void __fastcall TForm1::ButtonDisconnectClick(TObject *Sender)
 	if (PcLED) PcLED->Brush->Color = clRed;
 	if (PcBox) PcBox->Enabled = true;
 
-	for(i=0; i<DigiCommChannels; i++) {
+	for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
     CommBox[i]->Enabled = true;
 		EditSerialNum[i]->Enabled = true;
 		LabelSerialNum[i]->Enabled = true;
@@ -5158,9 +5274,271 @@ void __fastcall TForm1::ButtonDisconnectClick(TObject *Sender)
 
 //---------------------------------------------------------------------------
 
+// HELPER METHODS THAT WILL CENTER TEXT AS IT'S ENTERED INTO A TEdit Control
+
+static void CenterSingleLineTEdit(TEdit* ed)
+{
+    if (!ed) return;
+    if (!ed->HandleAllocated()) ed->HandleNeeded();  // ensure HWND exists
+
+    LONG_PTR style = GetWindowLongPtr(ed->Handle, GWL_STYLE);
+
+    if ((style & ES_CENTER) == 0)
+    {
+        SetWindowLongPtr(ed->Handle, GWL_STYLE, style | ES_CENTER);
+
+        // tell Windows to re-read the style and redraw
+        SetWindowPos(ed->Handle, nullptr, 0,0,0,0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+        InvalidateRect(ed->Handle, nullptr, TRUE);
+    }
+}
+//---------------------------------------------------------------------------
+static void CenterSingleLineTMaskEdit(TMaskEdit* ed)
+{
+    if (!ed) return;
+    if (!ed->HandleAllocated()) ed->HandleNeeded();  // ensure HWND exists
+
+    LONG_PTR style = GetWindowLongPtr(ed->Handle, GWL_STYLE);
+
+    if ((style & ES_CENTER) == 0)
+    {
+        SetWindowLongPtr(ed->Handle, GWL_STYLE, style | ES_CENTER);
+
+        // tell Windows to re-read the style and redraw
+        SetWindowPos(ed->Handle, nullptr, 0,0,0,0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+        InvalidateRect(ed->Handle, nullptr, TRUE);
+    }
+}
+//---------------------------------------------------------------------------
+
+static void CenterEditText(TEdit* ed)
+{
+		if (!ed || !ed->HandleAllocated()) return;
+
+		// Current client size
+		RECT rc;
+		GetClientRect(ed->Handle, &rc);
+
+		// Measure current text width using the edit's font
+		HDC hdc = GetDC(ed->Handle);
+		HFONT oldFont = (HFONT)SelectObject(hdc, ed->Font->Handle);
+
+		SIZE sz{};
+		UnicodeString s = ed->Text;
+    GetTextExtentPoint32W(hdc, s.c_str(), s.Length(), &sz);
+
+		SelectObject(hdc, oldFont);
+		ReleaseDC(ed->Handle, hdc);
+
+		// If text is wider than the box, don't try to center (let it behave normally)
+    int clientW = rc.right - rc.left;
+		if (sz.cx >= clientW) {
+        SendMessage(ed->Handle, EM_SETRECT, 0, (LPARAM)&rc);
+				InvalidateRect(ed->Handle, NULL, TRUE);
+        return;
+		}
+
+		// Compute left inset needed so text starts at centered position
+		int leftInset = (clientW - sz.cx) / 2;
+
+		// Set formatting rect so the left edge begins at the centered start point
+		RECT fr = rc;
+		fr.left = rc.left + leftInset;
+    fr.right = rc.right; // keep right edge (scrolling still works reasonably)
+
+    SendMessage(ed->Handle, EM_SETRECT, 0, (LPARAM)&fr);
+		InvalidateRect(ed->Handle, NULL, TRUE);
+}
+
+//---------------------------------------------------------------------------
+
+static void CenterMaskEditText(TMaskEdit* ed)
+{
+		if (!ed || !ed->HandleAllocated()) return;
+
+		// Current client size
+		RECT rc;
+		GetClientRect(ed->Handle, &rc);
+
+		// Measure current text width using the edit's font
+		HDC hdc = GetDC(ed->Handle);
+		HFONT oldFont = (HFONT)SelectObject(hdc, ed->Font->Handle);
+
+		SIZE sz{};
+		UnicodeString s = ed->Text;
+    GetTextExtentPoint32W(hdc, s.c_str(), s.Length(), &sz);
+
+		SelectObject(hdc, oldFont);
+		ReleaseDC(ed->Handle, hdc);
+
+		// If text is wider than the box, don't try to center (let it behave normally)
+    int clientW = rc.right - rc.left;
+		if (sz.cx >= clientW) {
+        SendMessage(ed->Handle, EM_SETRECT, 0, (LPARAM)&rc);
+				InvalidateRect(ed->Handle, NULL, TRUE);
+        return;
+		}
+
+		// Compute left inset needed so text starts at centered position
+		int leftInset = (clientW - sz.cx) / 2;
+
+		// Set formatting rect so the left edge begins at the centered start point
+		RECT fr = rc;
+		fr.left = rc.left + leftInset;
+    fr.right = rc.right; // keep right edge (scrolling still works reasonably)
+
+    SendMessage(ed->Handle, EM_SETRECT, 0, (LPARAM)&fr);
+		InvalidateRect(ed->Handle, NULL, TRUE);
+}
 
 
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::EditBaroCmdCalCheckOnChange(TObject *Sender)
+{
+	CenterEditText(EditBaroCmdCalCheck);
+}
+// CALLED FROM CAL CHECK TAB
+
+void __fastcall TForm1::ButtonCalCheckSendCommandClick(TObject *Sender)
+{
+	SendBaroCommand(EditBaroCmdCalCheck->Text, CSpinEditCalCheckPort->Value);
+
+/*	char str[100];
+
+	//int iVal = int(100.0 * atof(EditOffsetOverride->Text.c_str()));
+	int iPort = CSpinEditCalCheckPort->Value;
+
+	int result = Application->MessageBox(
+			L"Send Barometer Command?",
+			L"Cal Check",
+					MB_YESNO);
+
+	if(result == IDNO) return;
+
+	AnsiString serial = EditBaroCmdCalCheck->Text;   // converts UnicodeString -> AnsiString
+	sprintf(str,"%s", serial.c_str());
+	MemoMain->Lines->Add(str);
+	BaroSendMsg(iPort, str);
+	WaitCmd(1); */
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::EditBaroCmdPortMonOnChange(TObject *Sender)
+{
+	CenterEditText(EditBaroCmdPortMon);
+}
+
+// CALLED FROM PORT MONITOR PAGE
+void __fastcall TForm1::ButtonSendBaroPortMonCmdClick(TObject *Sender)
+{
+	SendBaroCommand(EditBaroCmdPortMon->Text, CSpinEditPortMon->Value);
+}
+
+//---------------------------------------------------------------------------
 
 
+//---------------------------------------------------------------------------
+void __fastcall TForm1::EditAddr1OnChange(TObject *Sender)
+{
+	CenterEditText(EditAddr2);
+}
 
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::EditAddr2OnChange(TObject *Sender)
+{
+	CenterEditText(EditAddr2);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::EditAddr3OnChange(TObject *Sender)
+{
+	CenterEditText(EditAddr3);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::EditAddr4OnChange(TObject *Sender)
+{
+	CenterEditText(EditAddr4);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::EditAddrPCOnChange(TObject *Sender)
+{
+	CenterEditText(EditAddrPC);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::SendBaroCommand(const UnicodeString& cmdText, int port)
+{
+    // Proper empty check for UnicodeString
+    if (cmdText.IsEmpty())
+        return;
+
+    // Convert Unicode -> Ansi (SCPI is ASCII)
+    AnsiString a(cmdText);
+    const char* cmd = a.c_str();
+
+    char str[100];
+
+    if (CheckBoxConfirmBaroCmd->Checked)
+    {
+        int result = Application->MessageBox(L"Send Barometer Command?", L"Cal Check", MB_YESNO);
+        if (result == IDNO) return;
+    }
+
+    // Copy into local buffer (protect against overflow)
+    std::strncpy(str, cmd, sizeof(str) - 1);
+    str[sizeof(str) - 1] = '\0';
+
+    Screen->Cursor = crHourGlass;
+
+    if (std::strcmp("E", str) == 0)
+    {
+        std::strcpy(str, "\x1B\x1B\x1B");
+        MemoMain->Lines->Add("ESCAPE SEQUENCE (\x1B\x1B\x1B)");
+    }
+    else
+    {
+        MemoMain->Lines->Add(str);
+    }
+
+    if (CheckBoxSendAllPorts->Checked)
+    {
+        BaroSendMsg(0, str);
+    }
+    else
+    {
+			BaroSendMsg(port, str);
+    }
+
+    WaitCmd(1);
+    Screen->Cursor = crDefault;
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::EditAddrTCOnChange(TObject *Sender)
+{
+	CenterEditText(EditAddrTC);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::MaskEditPressureOnChange(TObject *Sender)
+{
+	CenterMaskEditText(MaskEditPressure);
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::MaskEditTemperatureOnChange(TObject *Sender)
+{
+	CenterMaskEditText(MaskEditTemperature);
+}
+//---------------------------------------------------------------------------
 

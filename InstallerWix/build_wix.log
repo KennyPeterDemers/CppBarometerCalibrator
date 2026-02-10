@@ -15,5 +15,5 @@ C:\Repos\CppBarometerCalibrator\InstallerWix\BarometerCalibrator.wxs(35) : verbo
 wix.exe : verbose WIX9030: There will be '12' threads used to produce CAB files.
 wix.exe : verbose WIX9007: Updating file information.
 wix.exe : verbose WIX9010: Creating cabinet files.
-wix.exe : verbose WIX9015: Creating cabinet 'C:\Users\KPDem\AppData\Local\Temp\0li1jn2o.yyj\#cab1.cab'.
+wix.exe : verbose WIX9015: Creating cabinet 'C:\Users\KPDem\AppData\Local\Temp\qrmbcf2s.3bl\#cab1.cab'.
 wix.exe : verbose WIX9008: Generating database.

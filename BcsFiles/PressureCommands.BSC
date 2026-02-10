@@ -1,0 +1,19 @@
+*
+* START CALIBRATION
+* -----------------------------------
+* 
+PC I 2		    INITIALIZE PRESSURE CONTROLLER
+*
+PC P 900 5 	SET PRESSURE, WAIT
+*
+PC P 800 5 	SET PRESSURE, WAIT
+*
+PC P 700 5 	SET PRESSURE, WAIT
+*
+PC I 2		INITIALIZE PRESSURE CONTROLLER
+*
+PC S          STOP PRESSURE
+*
+RET
+* -------------------------------------
+
