@@ -8,7 +8,8 @@
 static CRITICAL_SECTION g_cs;
 static bool g_inited = false;
 
-static size_t g_maxDumpBytes = 128;
+static size_t g_maxEntries = 5000;
+static size_t g_maxDumpBytes = 256;
 static uint64_t g_seq = 0;
 
 //static std::vector<SockTraceEntry> g_entries;
@@ -28,8 +29,11 @@ void SockTracer::Init(size_t maxEntries, size_t maxBytesToDump)
 				InitializeCriticalSection(&g_cs);
         g_inited = true;
     }
-		g_maxDumpBytes = maxBytesToDump;
-		g_seq = 0;
+    g_maxEntries = maxEntries;
+    g_maxDumpBytes = maxBytesToDump;
+		//g_entries.clear();
+		//g_entries.reserve(g_maxEntries);
+    g_seq = 0;
 }
 
 void SockTracer::EnsureInit()
@@ -175,12 +179,18 @@ void SockTracer::Log(TraceKind kind, const char* text)
     EnsureInit();
 		EnterCriticalSection(&g_cs);
 
+		/*if (g_entries.size() >= g_maxEntries)
+		{
+			g_entries.erase(g_entries.begin());
+		}*/
 		 SockTraceEntry e;
-		e.seq = ++g_seq;
+    e.seq = ++g_seq;
     e.tickMs = GetTickCount();
     e.threadId = GetCurrentThreadId();
 		e.endpoint = text;
 		e.kind = kind;
+
+		//g_entries.push_back(e);
 
 		uint32_t deltaMs = g_firstRt ? 0u : (e.tickMs - g_prevTickForRt);
 		g_firstRt = false;
@@ -204,6 +214,10 @@ void SockTracer::Log(bool isTx, const char* endpoint, const void* data, int byte
 		}
 		EnterCriticalSection(&g_cs);
 
+		/*if (g_entries.size() >= g_maxEntries)
+		{
+			g_entries.erase(g_entries.begin());
+		}*/
 		SockTraceEntry e;
     e.seq = ++g_seq;
     e.tickMs = GetTickCount();
@@ -230,7 +244,9 @@ void SockTracer::Log(bool isTx, const char* endpoint, const void* data, int byte
 				e.hex += "...";
 				e.ascii += "..."; \
 		}
-		uint32_t deltaMs = g_firstRt ? 0u : (e.tickMs - g_prevTickForRt);
+    g_entries.push_back(e);
+
+    uint32_t deltaMs = g_firstRt ? 0u : (e.tickMs - g_prevTickForRt);
 		g_firstRt = false;
 		g_prevTickForRt = e.tickMs;
 
@@ -255,8 +271,8 @@ bool SockTracer::StartRealtimeFile(const wchar_t* path, bool durableFlush)
     g_durableFlush = durableFlush;
     g_rtHeaderWritten = false;
 
-    // New file in binary so we control line endings and don’t get surprises
-		g_rtFile = _wfopen(path, L"wb");
+    // Append in binary so we control line endings and don’t get surprises
+    g_rtFile = _wfopen(path, L"ab");
     if (!g_rtFile)
     {
         LeaveCriticalSection(&g_cs);

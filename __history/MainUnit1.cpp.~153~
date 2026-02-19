@@ -1372,11 +1372,10 @@ void __fastcall TForm1::TemperatureInit() {
 	if(Active(TcSocket)) {
     try {
 			SendTextLogged(TcSocket->Socket, ":OUTPUT1:STATE ON",  SendTermination::LF);     // RM
-			SendTextLogged(TcSocket->Socket, ":SOURCE:CLOOP1:RACTION ON",  SendTermination::LF);    // S
 		}
-		catch(...) {
-			LogError("ERROR: Exception in TempInit().");
-		}
+    catch(...) {
+      LogError("ERROR: Exception in TempInit().");
+    }
 	}
 	else LogError("ERROR: TempInit(), Temperature Comm Port Closed.");
 }
@@ -1384,18 +1383,11 @@ void __fastcall TForm1::TemperatureInit() {
 //---------------------------------------------------------------------------
 
 void __fastcall TForm1::TemperatureStop() {
-	char str[100];
+  char str[100];
 
 	if(Active(TcSocket)) {
 		try {
-			// This should stop the temperature controller from ramping up or down
-			// but it does not seem to work
-			//SendTextLogged(TcSocket->Socket, ":PROGRAM:SELECTED:STATE STOP",  SendTermination::LF);    // S
-			SendTextLogged(TcSocket->Socket, ":OUTPUT1:STATE OFF",  SendTermination::LF);    // S
-			//SendTextLogged(TcSocket->Socket, ":SOURCE:CLOOP1:RACTION OFF",  SendTermination::LF);    // S
-
-			// So we'll try to set the temperature to whatever the current temperature is
-      TemperatureSet(CurrentTemp);
+			SendTextLogged(TcSocket->Socket, ":PROGRAM:STATE STOP",  SendTermination::LF);    // S
 		}
 		catch(...) {
 			LogError("ERROR: Exception in TempStop().");
@@ -1440,8 +1432,7 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
 					// No
 					else {
 						sprintf(LocStr,"ERROR: BaroSendMsg(), Baro Comm Port %i Closed.", i+1);
-						// log to trace file not the in memory error log
-						SockTracer::Log(TraceKind::Note, LocStr);
+						LogError(LocStr);
 					}
 				}
 			}
@@ -1477,8 +1468,7 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
 					}
 					else {
 						sprintf(LocStr,"ERROR: BaroSendMsg(), Baro Comm Port %i Closed.", i+1);
-						// log to trace file not the in memory error log
-						SockTracer::Log(TraceKind::Note, LocStr);
+						LogError(LocStr);
 					}
 				}
 			}

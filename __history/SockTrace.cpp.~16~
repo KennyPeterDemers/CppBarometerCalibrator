@@ -8,7 +8,8 @@
 static CRITICAL_SECTION g_cs;
 static bool g_inited = false;
 
-static size_t g_maxDumpBytes = 128;
+//static size_t g_maxEntries = 5000;
+static size_t g_maxDumpBytes = 256;
 static uint64_t g_seq = 0;
 
 //static std::vector<SockTraceEntry> g_entries;
@@ -28,7 +29,8 @@ void SockTracer::Init(size_t maxEntries, size_t maxBytesToDump)
 				InitializeCriticalSection(&g_cs);
         g_inited = true;
     }
-		g_maxDumpBytes = maxBytesToDump;
+		//g_maxEntries = maxEntries;
+		//g_maxDumpBytes = maxBytesToDump;
 		g_seq = 0;
 }
 
@@ -255,8 +257,8 @@ bool SockTracer::StartRealtimeFile(const wchar_t* path, bool durableFlush)
     g_durableFlush = durableFlush;
     g_rtHeaderWritten = false;
 
-    // New file in binary so we control line endings and don’t get surprises
-		g_rtFile = _wfopen(path, L"wb");
+    // Append in binary so we control line endings and don’t get surprises
+    g_rtFile = _wfopen(path, L"ab");
     if (!g_rtFile)
     {
         LeaveCriticalSection(&g_cs);

@@ -54,11 +54,12 @@ object FormErrorLog: TFormErrorLog
     Width = 400
     Height = 292
     Align = alClient
-    Constraints.MinHeight = 292
-    Constraints.MinWidth = 300
-    ScrollBars = ssBoth
+	Constraints.MinWidth = 300
+	Constraints.MinHeight = 292
+	ScrollBars = ssBoth
     TabOrder = 0
     WordWrap = False
+    ExplicitWidth = 274
   end
   object MainMenu1: TMainMenu
     Left = 176

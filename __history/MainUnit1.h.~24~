@@ -281,7 +281,6 @@ __published:	// IDE-managed Components
 	void __fastcall EditAddrTCOnChange(TObject *Sender);
 	void __fastcall MaskEditPressureOnChange(TObject *Sender);
 	void __fastcall MaskEditTemperatureOnChange(TObject *Sender);
-	void __fastcall FormCreate(TObject *Sender);
 private:
 	TCheckBox *PcBox;
 	TCheckBox *TcBox;

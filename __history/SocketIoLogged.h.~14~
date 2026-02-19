@@ -26,48 +26,34 @@ inline void BuildEndpoint(TSock* sock, char* ep, int epSize)
     std::snprintf(ep, epSize, "%s:%d", addr.c_str(), port);
 }
 
-// THIS METHOD IS USED BY DIGI CONNECTPORT SERIAL DEVICES (Barometer)
-// that receive command strings 1 character at a time
-template <typename TSock>
-inline int SendCharacterLogged(TSock* sock, char ch)
-{
-		if (!sock)
-				return -1;
-
-		char ep[128];
-		BuildEndpoint(sock, ep, (int)sizeof(ep));
-
-		// Log exactly what will be sent (1 byte)
-		SockTracer::Log(true, ep, &ch, 1);
-
-		// Send exactly 1 byte
-		return sock->SendBuf(&ch, 1);
-}
-
-// THIS METHOD IS USED BY SCPI DEVICES (Temp & Pressure) that receive command strings
 template <typename TSock>
 inline int SendTextLogged(TSock* sock, const char* text, SendTermination term)
 {
-		if (!sock || !text)
-				return -1;
+    if (!sock || !text)
+        return -1;
 
-		char ep[128];
-		BuildEndpoint(sock, ep, (int)sizeof(ep));
+    char ep[128];
+    BuildEndpoint(sock, ep, (int)sizeof(ep));
 
-		char buf[1024];
+    char buf[1024];
 
-		size_t len = std::strlen(text);
+    size_t len = std::strlen(text);
 
-		// Strip trailing CR/LF from input in case caller added it by mistake
-		while (len > 0 && (text[len - 1] == '\r' || text[len - 1] == '\n'))
-				--len;
+    // Strip trailing CR/LF from input in case caller added it by mistake
+    while (len > 0 && (text[len - 1] == '\r' || text[len - 1] == '\n'))
+        --len;
 
-		// Determine terminator bytes
-		const char* termBytes = nullptr;
-		size_t termLen = 0;
+    // Determine terminator bytes
+    const char* termBytes = nullptr;
+    size_t termLen = 0;
 
-		switch (term)
-		{
+    switch (term)
+    {
+				case SendTermination::NONE:
+						termBytes = "";
+						termLen = 0;
+						break;
+
 				case SendTermination::CR:
 						termBytes = "\r";
 						termLen = 1;
@@ -89,27 +75,29 @@ inline int SendTextLogged(TSock* sock, const char* text, SendTermination term)
 						break;
 
 				default:
-						// Failsafe: treat unknown as LF
+            // Failsafe: treat unknown as LF
 						termBytes = "\n";
-						termLen = 1;
+            termLen = 1;
             break;
-		}
+    }
 		// Prevent overflow: need space for payload + terminator (+ optional '\0' for logging convenience)
-		if (len + termLen + 1 > sizeof(buf))
+    if (len + termLen + 1 > sizeof(buf))
         return -1;
 
 		std::memcpy(buf, text, len);
-		std::memcpy(buf + len, termBytes, termLen);
+		if (termLen > 0) {
+			std::memcpy(buf + len, termBytes, termLen);
+		}
 		const size_t sendLen = len + termLen;
 
     // Optional: null-terminate for logging convenience (NOT sent)
-		buf[sendLen] = '\0';
+    buf[sendLen] = '\0';
 
-		// Log exactly what will be sent
+    // Log exactly what will be sent
     SockTracer::Log(true, ep, buf, (int)sendLen);
 
     // Send including terminator (but NOT the null terminator)
-		return sock->SendBuf(buf, (int)sendLen);
+    return sock->SendBuf(buf, (int)sendLen);
 }
 
 

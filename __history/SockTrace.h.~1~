@@ -33,17 +33,14 @@ class SockTracer
 public:
     static void Init(size_t maxEntries = 5000, size_t maxBytesToDump = 256);
 
+    // DEFAULT: always include endpoint
     static void Log(bool isTx, const char* endpoint, const void* data, int bytes);
-    static void Log(TraceKind kind, const char* text);
+		static void Log(TraceKind kind, const char* text);
 
     static const std::vector<SockTraceEntry>& Entries();
     static std::vector<SockTraceEntry> Snapshot();
 
     static void DumpToFile(const wchar_t* path);
-
-    // NEW: realtime file logging
-    static bool StartRealtimeFile(const wchar_t* path, bool durableFlush = true);
-    static void StopRealtimeFile();
 
 private:
     static void EnsureInit();

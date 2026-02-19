@@ -255,8 +255,8 @@ bool SockTracer::StartRealtimeFile(const wchar_t* path, bool durableFlush)
     g_durableFlush = durableFlush;
     g_rtHeaderWritten = false;
 
-    // New file in binary so we control line endings and don’t get surprises
-		g_rtFile = _wfopen(path, L"wb");
+    // Append in binary so we control line endings and don’t get surprises
+    g_rtFile = _wfopen(path, L"ab");
     if (!g_rtFile)
     {
         LeaveCriticalSection(&g_cs);

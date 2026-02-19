@@ -1,0 +1,108 @@
+#pragma once
+
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <System.hpp>     // AnsiString
+#include "SockTrace.h"
+
+enum class SendTermination : uint8_t
+{
+		CR = 0,		// terminate with a CR
+		LF,				// terminate with a LF
+		CRLF,			// terminate with a CR LF sequence
+		LFCR      // terminate with a LF CR sequence
+};
+
+
+// Build "ip:port" from any socket type that has RemoteAddress / RemotePort
+template <typename TSock>
+inline void BuildEndpoint(TSock* sock, char* ep, int epSize)
+{
+    // RemoteAddress is typically UnicodeString; convert to AnsiString
+    AnsiString addr = sock->RemoteAddress;
+    int port = sock->RemotePort;
+    std::snprintf(ep, epSize, "%s:%d", addr.c_str(), port);
+}
+
+template <typename TSock>
+inline int SendTextLogged(TSock* sock, const char* text, SendTermination term)
+{
+    if (!sock || !text)
+        return -1;
+
+    char ep[128];
+    BuildEndpoint(sock, ep, (int)sizeof(ep));
+
+    char buf[1024];
+
+    size_t len = std::strlen(text);
+
+    // Strip trailing CR/LF from input in case caller added it by mistake
+    while (len > 0 && (text[len - 1] == '\r' || text[len - 1] == '\n'))
+        --len;
+
+    // Determine terminator bytes
+    const char* termBytes = nullptr;
+    size_t termLen = 0;
+
+    switch (term)
+    {
+        case SendTermination::CR:
+            termBytes = "\r";
+            termLen = 1;
+            break;
+
+        case SendTermination::LF:
+            termBytes = "\n";
+            termLen = 1;
+            break;
+
+        case SendTermination::CRLF:
+            termBytes = "\r\n";
+            termLen = 2;
+            break;
+
+        case SendTermination::LFCR:
+            termBytes = "\n\r";
+            termLen = 2;
+            break;
+
+        default:
+            // Failsafe: treat unknown as LF
+						termBytes = "\n";
+            termLen = 1;
+            break;
+    }
+
+    // Prevent overflow: need space for payload + terminator (+ optional '\0' for logging convenience)
+    if (len + termLen + 1 > sizeof(buf))
+        return -1;
+
+    std::memcpy(buf, text, len);
+    std::memcpy(buf + len, termBytes, termLen);
+
+    const size_t sendLen = len + termLen;
+
+    // Optional: null-terminate for logging convenience (NOT sent)
+    buf[sendLen] = '\0';
+
+    // Log exactly what will be sent
+    SockTracer::Log(true, ep, buf, (int)sendLen);
+
+    // Send including terminator (but NOT the null terminator)
+    return sock->SendBuf(buf, (int)sendLen);
+}
+
+
+template <typename TSock>
+inline void LogRxTextLogged(TSock* sock, const char* text)
+{
+		if (!sock || !text) return;
+
+		char ep[128];
+		BuildEndpoint(sock, ep, (int)sizeof(ep));
+
+		SockTracer::Log(false, ep, text, (int)std::strlen(text));
+}
+
