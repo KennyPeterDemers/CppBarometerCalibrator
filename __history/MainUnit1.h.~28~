@@ -249,7 +249,7 @@ __published:	// IDE-managed Components
   void __fastcall ButtonAutoNumClick(TObject *Sender);
   void __fastcall EditBaroCmdPortMonKeyPress(TObject *Sender, char &Key);
   void __fastcall ButtonSendBaroPortMonCmdClick(TObject *Sender);
-  void __fastcall SendBaroCommand();
+  void __fastcall SendBaroCommand(const UnicodeString& cmdText, int port);
 	void __fastcall CSpinEditTargetPressureTimeLimitChange(TObject *Sender);
   void __fastcall CheckBoxEnableAutoNumberClick(TObject *Sender);
   void __fastcall ButtonSetPressureClick(TObject *Sender);
@@ -270,8 +270,18 @@ __published:	// IDE-managed Components
   void __fastcall ButtonStartStopTimerClick(TObject *Sender);
   void __fastcall CheckBoxAutoTimerClick(TObject *Sender);
 	bool __fastcall Active(TClientSocket* sock);
-	void __fastcall EditBaroCmdCalCheckOnChange(TObject *Sender);
+	void __fastcall EditBaroCmdPortMonOnChange(TObject *Sender);
 	void __fastcall ButtonCalCheckSendCommandClick(TObject *Sender);
+	void __fastcall EditBaroCmdCalCheckOnChange(TObject *Sender);
+	void __fastcall EditAddr1OnChange(TObject *Sender);
+	void __fastcall EditAddr2OnChange(TObject *Sender);
+	void __fastcall EditAddr3OnChange(TObject *Sender);
+	void __fastcall EditAddr4OnChange(TObject *Sender);
+	void __fastcall EditAddrPCOnChange(TObject *Sender);
+	void __fastcall EditAddrTCOnChange(TObject *Sender);
+	void __fastcall MaskEditPressureOnChange(TObject *Sender);
+	void __fastcall MaskEditTemperatureOnChange(TObject *Sender);
+	void __fastcall FormCreate(TObject *Sender);
 private:
 	TCheckBox *PcBox;
 	TCheckBox *TcBox;
@@ -311,7 +321,8 @@ private:
 	void __fastcall TemperatureSet(float temperature);
 	void __fastcall TemperatureSetUnits(char units);
 	void __fastcall TemperatureStop();
-  void __fastcall TemperatureInit();
+	void __fastcall TemperatureStopModbusTcp();
+	void __fastcall TemperatureInit();
   void __fastcall BaroSendMsg(int Port, const char *str);
   void __fastcall BaroRead(int Port);
   void __fastcall AppMessage(tagMSG &Msg, bool &Handled);

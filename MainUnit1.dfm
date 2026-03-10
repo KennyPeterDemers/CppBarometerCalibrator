@@ -3,7 +3,6 @@ object Form1: TForm1
   Top = 210
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
-  Caption = 'Barometer Calibrator V1.0.10'
   ClientHeight = 640
   ClientWidth = 724
   Color = clBtnFace

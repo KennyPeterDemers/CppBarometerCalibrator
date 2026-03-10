@@ -321,7 +321,9 @@ private:
 	void __fastcall TemperatureSet(float temperature);
 	void __fastcall TemperatureSetUnits(char units);
 	void __fastcall TemperatureStop();
-  void __fastcall TemperatureInit();
+	void __fastcall TemperatureStartModbusTcp();
+	void __fastcall TemperatureStopModbusTcp();
+	void __fastcall TemperatureInit();
   void __fastcall BaroSendMsg(int Port, const char *str);
   void __fastcall BaroRead(int Port);
   void __fastcall AppMessage(tagMSG &Msg, bool &Handled);

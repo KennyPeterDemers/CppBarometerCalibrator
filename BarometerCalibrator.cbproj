@@ -159,6 +159,8 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <LinkPackageStatics>rtl.lib;vcl.lib;bcbsmp.lib;vclx.lib;IndySystem.lib;IndyCore.lib</LinkPackageStatics>
+        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=2.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+        <VerInfo_MajorVer>2</VerInfo_MajorVer>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
@@ -180,6 +182,8 @@
         <VerInfo_Locale>1033</VerInfo_Locale>
         <PostBuildEvent><![CDATA[xcopy /Y /D "C:\Repos\CppBarometerCalibrator\Redist\Win32\*.dll" "C:\Repos\CppBarometerCalibrator\Win32\Release\"
 $(PostBuildEvent)]]></PostBuildEvent>
+        <VerInfo_Build>13</VerInfo_Build>
+        <VerInfo_Keys>CompanyName=RM Young;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.13;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
@@ -218,6 +222,12 @@ $(PostBuildEvent)]]></PostBuildEvent>
             <DependentOn>MainUnit1.h</DependentOn>
             <BuildOrder>2</BuildOrder>
         </CppCompile>
+        <CppCompile Include="ModbusSupport.cpp">
+            <BuildOrder>10</BuildOrder>
+        </CppCompile>
+        <None Include="ModbusSupport.h">
+            <BuildOrder>11</BuildOrder>
+        </None>
         <None Include="SocketIoLogged.h">
             <BuildOrder>7</BuildOrder>
         </None>
@@ -323,9 +333,21 @@ $(PostBuildEvent)]]></PostBuildEvent>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
+                <DeployFile LocalName=".\Win32\Debug\BarometerCalibrator.tds" Configuration="Debug" Class="DebugSymbols">
+                    <Platform Name="Win32">
+                        <RemoteName>BarometerCalibrator.tds</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName=".\Win32\Release\BarometerCalibrator.exe" Configuration="Release" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>BarometerCalibrator.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="license.rtf" Configuration="Debug" Class="ProjectFile">
+                    <Platform Name="Win32">
+                        <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

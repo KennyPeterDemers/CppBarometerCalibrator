@@ -3,7 +3,7 @@ object Form1: TForm1
   Top = 210
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
-  Caption = 'Barometer Calibrator V1.0.4'
+  Caption = 'Barometer Calibrator V1.0.12'
   ClientHeight = 640
   ClientWidth = 724
   Color = clBtnFace
@@ -779,7 +779,7 @@ object Form1: TForm1
     Top = 8
     Width = 720
     Height = 337
-    ActivePage = TabSheetCalChk
+    ActivePage = TabSheetComm
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -11

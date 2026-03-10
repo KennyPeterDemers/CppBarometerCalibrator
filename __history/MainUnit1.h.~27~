@@ -249,7 +249,7 @@ __published:	// IDE-managed Components
   void __fastcall ButtonAutoNumClick(TObject *Sender);
   void __fastcall EditBaroCmdPortMonKeyPress(TObject *Sender, char &Key);
   void __fastcall ButtonSendBaroPortMonCmdClick(TObject *Sender);
-  void __fastcall SendBaroCommand();
+  void __fastcall SendBaroCommand(const UnicodeString& cmdText, int port);
 	void __fastcall CSpinEditTargetPressureTimeLimitChange(TObject *Sender);
   void __fastcall CheckBoxEnableAutoNumberClick(TObject *Sender);
   void __fastcall ButtonSetPressureClick(TObject *Sender);
@@ -272,6 +272,16 @@ __published:	// IDE-managed Components
 	bool __fastcall Active(TClientSocket* sock);
 	void __fastcall EditBaroCmdPortMonOnChange(TObject *Sender);
 	void __fastcall ButtonCalCheckSendCommandClick(TObject *Sender);
+	void __fastcall EditBaroCmdCalCheckOnChange(TObject *Sender);
+	void __fastcall EditAddr1OnChange(TObject *Sender);
+	void __fastcall EditAddr2OnChange(TObject *Sender);
+	void __fastcall EditAddr3OnChange(TObject *Sender);
+	void __fastcall EditAddr4OnChange(TObject *Sender);
+	void __fastcall EditAddrPCOnChange(TObject *Sender);
+	void __fastcall EditAddrTCOnChange(TObject *Sender);
+	void __fastcall MaskEditPressureOnChange(TObject *Sender);
+	void __fastcall MaskEditTemperatureOnChange(TObject *Sender);
+	void __fastcall FormCreate(TObject *Sender);
 private:
 	TCheckBox *PcBox;
 	TCheckBox *TcBox;

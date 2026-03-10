@@ -34,7 +34,8 @@ TC T 26 5 	SET TEMP, WAIT
 PC I 2		INITIALIZE PRESSURE CONTROLLER
 BA R 0 5        READ ALL BAROS, WAIT 5 SEC 
 PC S          STOP PRESSURE
+TC S
 *
-RET
+ST
 * -------------------------------------
 
