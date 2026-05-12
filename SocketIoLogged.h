@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <System.hpp>     // AnsiString
-#include "SockTrace.h"
+#include "Logger.h"
 
 enum class SendTermination : uint8_t
 {
@@ -38,7 +38,7 @@ inline int SendCharacterLogged(TSock* sock, char ch)
 		BuildEndpoint(sock, ep, (int)sizeof(ep));
 
 		// Log exactly what will be sent (1 byte)
-		SockTracer::Log(true, ep, &ch, 1);
+		Logger::Log(true, ep, &ch, 1);
 
 		// Send exactly 1 byte
 		return sock->SendBuf(&ch, 1);
@@ -102,13 +102,13 @@ inline int SendTextLogged(TSock* sock, const char* text, SendTermination term)
 		std::memcpy(buf + len, termBytes, termLen);
 		const size_t sendLen = len + termLen;
 
-    // Optional: null-terminate for logging convenience (NOT sent)
+		// Optional: null-terminate for logging convenience (NOT sent)
 		buf[sendLen] = '\0';
 
 		// Log exactly what will be sent
-    SockTracer::Log(true, ep, buf, (int)sendLen);
+		Logger::Log(true, ep, buf, (int)sendLen);
 
-    // Send including terminator (but NOT the null terminator)
+		// Send including terminator (but NOT the null terminator)
 		return sock->SendBuf(buf, (int)sendLen);
 }
 
@@ -121,6 +121,6 @@ inline void LogRx(TSock* sock, const char* text)
 		char ep[128];
 		BuildEndpoint(sock, ep, (int)sizeof(ep));
 
-		SockTracer::Log(false, ep, text, (int)std::strlen(text));
+		Logger::Log(false, ep, text, (int)std::strlen(text));
 }
 

@@ -1,0 +1,310 @@
+// Logger.cpp
+#include "Logger.h"
+#include <windows.h>
+#include <stdio.h>
+#include <io.h>
+#include <fcntl.h>
+
+static CRITICAL_SECTION g_cs;
+static bool g_inited = false;
+
+static size_t g_maxDumpBytes = 128;
+static uint64_t g_seq = 0;
+
+static FILE*  g_rtFile = nullptr;
+static HANDLE g_rtHandle = nullptr;
+static bool   g_durableFlush = true;
+static bool   g_rtHeaderWritten = false;
+
+
+void Logger::Init(size_t maxEntries, size_t maxBytesToDump)
+{
+    if (!g_inited)
+    {
+				InitializeCriticalSection(&g_cs);
+        g_inited = true;
+    }
+		g_maxDumpBytes = maxBytesToDump;
+		g_seq = 0;
+}
+
+void Logger::EnsureInit()
+{
+    if (!g_inited)
+        Init();
+}
+
+
+static std::string ToHex(const uint8_t* p, size_t n)
+{
+		static const char* k = "0123456789ABCDEF";
+		std::string s;
+		s.reserve(n * 3);
+		for (size_t i = 0; i < n; i++)
+		{
+				uint8_t b = p[i];
+				s.push_back(k[b >> 4]);
+				s.push_back(k[b & 0xF]);
+				s.push_back(' ');
+		}
+		return s;
+}
+
+static std::string ToAscii(const uint8_t* p, size_t n)
+{
+		std::string s;
+		s.reserve(n);
+		for (size_t i = 0; i < n; i++)
+		{
+				const uint8_t b = p[i];
+				s.push_back((b >= 32 && b <= 126) ? (char)b : '.');
+		}
+		return s;
+}
+
+static const char* CtrlName(uint8_t b)
+{
+    switch (b)
+    {
+        case 0x1B: return "ESC";
+        case 0x0D: return "CR";
+        case 0x0A: return "LF";
+        case 0x09: return "TAB";
+        //case 0x20: return "SPACE";
+        default:   return nullptr;
+    }
+}
+
+static std::string ToAsciiNote(const uint8_t* p, size_t n)
+{
+    std::string s;
+    for (size_t i = 0; i < n; i++)
+    {
+        const char* name = CtrlName(p[i]);
+        if (!name) continue;
+
+        // add "i:NAME " tokens
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "%u:%s ", (unsigned)i, name);
+        s += buf;
+    }
+
+    // trim trailing space
+    if (!s.empty() && s.back() == ' ') s.pop_back();
+    return s;
+}
+
+static bool IsEmptyFile(FILE* f)
+{
+    if (!f) return true;
+    long cur = ftell(f);
+    fseek(f, 0, SEEK_END);
+    long end = ftell(f);
+    fseek(f, cur, SEEK_SET);
+    return (end <= 0);
+}
+
+static void RtWriteHeaderIfNeeded()
+{
+    if (!g_rtFile || g_rtHeaderWritten) return;
+
+    if (IsEmptyFile(g_rtFile))
+    {
+		fprintf(g_rtFile, "Seq\tTimeOfDay\t\t\tEndpoint\t\tDir\tBytes\tHex\tAscii\tAsciiNote\r\n");
+        fflush(g_rtFile);
+        if (g_durableFlush && g_rtHandle) FlushFileBuffers(g_rtHandle);
+    }
+
+    g_rtHeaderWritten = true;
+}
+
+static void RtFlush()
+{
+    if (!g_rtFile) return;
+    fflush(g_rtFile);
+    if (g_durableFlush && g_rtHandle)
+        FlushFileBuffers(g_rtHandle);
+}
+
+static void RtWriteEntry(const LogEntry& e)
+{
+    if (!g_rtFile) return;
+
+    RtWriteHeaderIfNeeded();
+
+    const char* dir =
+		(e.logType == LogType::Tx) ? "TX" :
+		(e.logType == LogType::Rx) ? "RX" : "NOTE";
+
+    if (e.logType == LogType::Note)
+    {
+        // For NOTE entries, you currently store text in endpoint
+		fprintf(g_rtFile, "%llu\t%s\t%s\t%s\t%d\t\t\t\r\n",
+            (unsigned long long)e.seq,
+            e.timeOfDay.c_str(),
+			e.endpoint.c_str(),
+            dir,
+            0);
+    }
+    else
+    {
+		fprintf(g_rtFile, "%llu\t%s\t%s\t%s\t%d\t%s\t%s\t%s\r\n",
+            (unsigned long long)e.seq,
+            e.timeOfDay.c_str(),
+			e.endpoint.c_str(),
+            dir,
+            e.bytes,
+            e.hex.c_str(),
+            e.ascii.c_str(),
+            e.asciiNote.c_str());
+    }
+
+    RtFlush();
+}
+
+void Logger::Log(LogType kind, const char* text)
+{
+	char timeBuf[32];
+
+	EnterCriticalSection(&g_cs);
+
+	LogEntry e;
+	e.seq = ++g_seq;
+	GetTimeOfDay9(timeBuf, sizeof(timeBuf));
+	e.timeOfDay = timeBuf;
+	e.endpoint = text;
+	e.logType = kind;
+
+	RtWriteEntry(e);
+
+	LeaveCriticalSection(&g_cs);
+}
+
+void Logger::Log(bool isTx, const char* endpoint, const void* data, int bytes)
+{
+	char timeBuf[32];
+
+	EnsureInit();
+	if (!endpoint)
+	{
+		endpoint = "";
+	}
+	if (!data || bytes <= 0)
+	{
+		return;
+	}
+	EnterCriticalSection(&g_cs);
+
+	LogEntry e;
+	e.seq = ++g_seq;
+	GetTimeOfDay9(timeBuf, sizeof(timeBuf));
+	e.timeOfDay = timeBuf;
+	e.endpoint = endpoint;
+	if (isTx == true) {
+		e.logType = LogType::Tx;
+	} else {
+		e.logType = LogType::Rx;
+	}
+	e.bytes = bytes;
+
+    size_t n = (size_t)bytes;
+	if (n > g_maxDumpBytes)
+	{
+		n = g_maxDumpBytes;
+	}
+	e.hex = ToHex((const uint8_t*)data, n);
+	e.ascii = ToAscii((const uint8_t*)data, n);
+	e.asciiNote = ToAsciiNote((const uint8_t*)data, n);
+
+	if ((size_t)bytes > n)
+	{
+			e.hex += "...";
+			e.ascii += "..."; \
+	}
+
+	RtWriteEntry(e);
+
+    LeaveCriticalSection(&g_cs);
+}
+
+bool Logger::StartRealtimeFile(const wchar_t* path, bool durableFlush)
+{
+    EnsureInit();
+    EnterCriticalSection(&g_cs);
+
+    // Close any previous file
+    if (g_rtFile)
+    {
+        fclose(g_rtFile);
+        g_rtFile = nullptr;
+        g_rtHandle = nullptr;
+    }
+
+    g_durableFlush = durableFlush;
+    g_rtHeaderWritten = false;
+
+    // New file in binary so we control line endings and don’t get surprises
+	g_rtFile = _wfopen(path, L"wb");
+    if (!g_rtFile)
+    {
+        LeaveCriticalSection(&g_cs);
+        return false;
+    }
+
+    // Make CRT buffering minimal (we still fflush each line)
+    setvbuf(g_rtFile, nullptr, _IONBF, 0);
+
+    int fd = _fileno(g_rtFile);
+    intptr_t osfh = _get_osfhandle(fd);
+    g_rtHandle = (osfh == -1) ? nullptr : (HANDLE)osfh;
+
+    // If file is empty, header will be written on first entry
+    LeaveCriticalSection(&g_cs);
+    return true;
+}
+
+void Logger::StopRealtimeFile()
+{
+    EnsureInit();
+    EnterCriticalSection(&g_cs);
+
+    if (g_rtFile)
+    {
+        fflush(g_rtFile);
+        if (g_durableFlush && g_rtHandle)
+            FlushFileBuffers(g_rtHandle);
+
+        fclose(g_rtFile);
+        g_rtFile = nullptr;
+        g_rtHandle = nullptr;
+        g_rtHeaderWritten = false;
+    }
+
+    LeaveCriticalSection(&g_cs);
+}
+
+void Logger::GetTimeOfDay9(char* buf, size_t bufSize)
+{
+    FILETIME ft;
+    GetSystemTimePreciseAsFileTime(&ft);
+
+    FILETIME localFt;
+    FileTimeToLocalFileTime(&ft, &localFt);
+
+    SYSTEMTIME st;
+    FileTimeToSystemTime(&localFt, &st);
+
+    ULARGE_INTEGER localUli;
+    localUli.LowPart = localFt.dwLowDateTime;
+    localUli.HighPart = localFt.dwHighDateTime;
+
+    unsigned long nanosec =
+        (unsigned long)((localUli.QuadPart % 10000000ULL) * 100ULL);
+
+    sprintf(buf,
+        "%02u:%02u:%02u.%09lu",
+        st.wHour,
+        st.wMinute,
+        st.wSecond,
+        nanosec);
+}

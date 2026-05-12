@@ -3,7 +3,7 @@
 #include <System.SysUtils.hpp>
 #include <System.Classes.hpp>
 #include "ModbusSupport.h"
-#include "SockTrace.h"
+#include "Logger.h"
 
 // Forward declaration
 
@@ -53,12 +53,12 @@ static bool ReadModbusFrame(TIdTCPClient* c, TBytes &frame)
 
 	if (len > 260) {
 		sprintf(str, "Invalid Modbus Header read - too many %d bytes", len);
-		SockTracer::Log(TraceKind::Note, str);
+		Logger::Log(LogType::Note, str);
 		return false;
 	}
 	if (len < 2) {
 		sprintf(str, "Invalid Modbus Header read - Only %d bytes", len);
-		SockTracer::Log(TraceKind::Note, str);
+		Logger::Log(LogType::Note, str);
 		return false;
 	}
 	// 2) Read ONLY the PDU bytes (len - 1)
@@ -88,7 +88,7 @@ static bool ReadModbusFrame(TIdTCPClient* c, TBytes &frame)
 
 	AnsiString msg = "RX Modbus (" + IntToStr(frame.Length) + " bytes): " + hexLine;
 
-	SockTracer::Log(TraceKind::Note, msg.c_str());
+	Logger::Log(LogType::Note, msg.c_str());
   return true;
 }
 
@@ -104,20 +104,20 @@ static bool Modbus_ValidateMbapBasic(const TBytes& resp, unsigned short expected
 static bool Modbus_CheckException(const TBytes& resp, const char* context)
 {
     if (resp.Length < 8) {
-				SockTracer::Log(TraceKind::Note, (AnsiString(context) + ": response too short").c_str());
+				Logger::Log(LogType::Note, (AnsiString(context) + ": response too short").c_str());
         return false;
     }
     Byte fc = resp[7];
     if ((fc & 0x80) == 0) return true; // not an exception
 
     if (resp.Length < 9) {
-				SockTracer::Log(TraceKind::Note, (AnsiString(context) + ": exception response too short").c_str());
+				Logger::Log(LogType::Note, (AnsiString(context) + ": exception response too short").c_str());
         return false;
     }
 
     char str[120];
     sprintf(str, "%s: Modbus exception FC=0x%X ExCode=0x%X", context, fc, resp[8]);
-    SockTracer::Log(TraceKind::Note, str);
+    Logger::Log(LogType::Note, str);
     return false;
 }
 
@@ -134,11 +134,11 @@ bool Modbus_Connect(TIdTCPClient* client, const AnsiString& host, int port, int 
     }
 		catch (const Exception& e) {
 				AnsiString msg = AnsiString("Modbus_Connect: ") + AnsiString(e.Message);
-				SockTracer::Log(TraceKind::Note, msg.c_str());
+				Logger::Log(LogType::Note, msg.c_str());
 				return false;
 		}
 		catch (...) {
-        SockTracer::Log(TraceKind::Note, "Modbus_Connect: exception");
+        Logger::Log(LogType::Note, "Modbus_Connect: exception");
         return false;
     }
 }
@@ -169,11 +169,11 @@ bool Modbus_WriteSingleRegister(
 
         TBytes resp;
         if (!ReadModbusFrame(client, resp)) {
-            SockTracer::Log(TraceKind::Note, "WriteSingleRegister: no response");
+            Logger::Log(LogType::Note, "WriteSingleRegister: no response");
             return false;
         }
         if (!Modbus_ValidateMbapBasic(resp, thisTx, unitId)) {
-            SockTracer::Log(TraceKind::Note, "WriteSingleRegister: MBAP mismatch");
+            Logger::Log(LogType::Note, "WriteSingleRegister: MBAP mismatch");
             return false;
         }
         if (!Modbus_CheckException(resp, "WriteSingleRegister")) return false;
@@ -181,13 +181,13 @@ bool Modbus_WriteSingleRegister(
         if (resp[7] != 0x06) {
             char s[100];
             sprintf(s, "WriteSingleRegister: unexpected FC=0x%X", resp[7]);
-            SockTracer::Log(TraceKind::Note, s);
+            Logger::Log(LogType::Note, s);
             return false;
         }
         return true;
     }
     catch (...) {
-        SockTracer::Log(TraceKind::Note, "WriteSingleRegister: exception");
+        Logger::Log(LogType::Note, "WriteSingleRegister: exception");
         return false;
     }
 }
@@ -223,11 +223,11 @@ bool Modbus_ReadHoldingRegisters(
 
         TBytes resp;
         if (!ReadModbusFrame(client, resp)) {
-            SockTracer::Log(TraceKind::Note, "ReadHoldingRegisters: no response");
+            Logger::Log(LogType::Note, "ReadHoldingRegisters: no response");
             return false;
         }
         if (!Modbus_ValidateMbapBasic(resp, thisTx, unitId)) {
-            SockTracer::Log(TraceKind::Note, "ReadHoldingRegisters: MBAP mismatch");
+            Logger::Log(LogType::Note, "ReadHoldingRegisters: MBAP mismatch");
             return false;
         }
         if (!Modbus_CheckException(resp, "ReadHoldingRegisters")) return false;
@@ -237,19 +237,19 @@ bool Modbus_ReadHoldingRegisters(
         if (resp.Length < need) {
             char s[120];
             sprintf(s, "ReadHoldingRegisters: response too short need=%d got=%d", need, (int)resp.Length);
-            SockTracer::Log(TraceKind::Note, s);
+            Logger::Log(LogType::Note, s);
             return false;
         }
         if (resp[7] != 0x03) {
             char s[80];
             sprintf(s, "ReadHoldingRegisters: unexpected FC=0x%X", resp[7]);
-            SockTracer::Log(TraceKind::Note, s);
+            Logger::Log(LogType::Note, s);
             return false;
         }
         if (resp[8] != (Byte)(2 * qty)) {
             char s[120];
             sprintf(s, "ReadHoldingRegisters: bad bytecount bc=%u expected=%u", resp[8], (unsigned)(2 * qty));
-            SockTracer::Log(TraceKind::Note, s);
+            Logger::Log(LogType::Note, s);
             return false;
         }
 
@@ -257,7 +257,7 @@ bool Modbus_ReadHoldingRegisters(
         return true;
     }
     catch (...) {
-        SockTracer::Log(TraceKind::Note, "ReadHoldingRegisters: exception");
+        Logger::Log(LogType::Note, "ReadHoldingRegisters: exception");
         return false;
     }
 }
@@ -269,7 +269,7 @@ bool F4T_TerminateProfile(TIdTCPClient* client, unsigned short& txId, Byte unitI
     const unsigned short REG_ProfileActionRequest_16566 = 16566;
     const unsigned short VAL_Terminate_148 = 148;
 
-    SockTracer::Log(TraceKind::Note, "F4T: Terminate profile (16566=148)");
+    Logger::Log(LogType::Note, "F4T: Terminate profile (16566=148)");
     return Modbus_WriteSingleRegister(client, txId, unitId, REG_ProfileActionRequest_16566, VAL_Terminate_148);
 }
 
@@ -281,7 +281,7 @@ bool F4T_ReadLoop1Regs272to274(
     unsigned short& out273,
     unsigned short& out274)
 {
-    SockTracer::Log(TraceKind::Note, "F4T: Read regs 272-274");
+    Logger::Log(LogType::Note, "F4T: Read regs 272-274");
     TBytes resp;
     if (!Modbus_ReadHoldingRegisters(client, txId, unitId, 272, 3, resp)) return false;
 
@@ -290,7 +290,7 @@ bool F4T_ReadLoop1Regs272to274(
     out274 = ReadU16BE(resp, 13);
 
     AnsiString msg = "Read regs 272-274: " + IntToStr((int)out272) + ", " + IntToStr((int)out273) + ", " + IntToStr((int)out274);
-		SockTracer::Log(TraceKind::Note, msg.c_str());
+		Logger::Log(LogType::Note, msg.c_str());
     return true;
 }
 
@@ -299,7 +299,7 @@ bool F4T_SetLoop1ControlModeOff(TIdTCPClient* client, unsigned short& txId, Byte
 		const unsigned short VAL_ModeOff_62 = 62; // Off
 
 		AnsiString msg = "F4T: Set Loop1 Control Mode Off addr=" + IntToStr((int)loop1ControlModePduAddr) + " val=62";
-		SockTracer::Log(TraceKind::Note, msg.c_str());
+		Logger::Log(LogType::Note, msg.c_str());
 		// Write Single Register (FC=06)
 		return Modbus_WriteSingleRegister(client, txId, unitId, loop1ControlModePduAddr, VAL_ModeOff_62);
 }
@@ -309,7 +309,7 @@ bool F4T_SetLoop1ControlModeAuto(TIdTCPClient* client, unsigned short& txId, Byt
 		const unsigned short VAL_ModeAuto_10 = 10;  // Auto
 
 		AnsiString msg = "F4T: Set Loop1 Control Mode Auto addr=" + IntToStr((int)loop1ControlModePduAddr) + " val=10";
-		SockTracer::Log(TraceKind::Note, msg.c_str());
+		Logger::Log(LogType::Note, msg.c_str());
 		// Write Single Register (FC=06)
 		return Modbus_WriteSingleRegister(client, txId, unitId, loop1ControlModePduAddr, VAL_ModeAuto_10);
 }
@@ -318,12 +318,12 @@ bool F4T_ReadProfileState(TIdTCPClient* client, unsigned short& txId, Byte unitI
 
 		const unsigned short REG_ProfileState_16568 = 16568;
 
-    SockTracer::Log(TraceKind::Note, "F4T: Read Profile State (16568)");
+    Logger::Log(LogType::Note, "F4T: Read Profile State (16568)");
     TBytes resp;
     if (!Modbus_ReadHoldingRegisters(client, txId, unitId, REG_ProfileState_16568, 1, resp)) return false;
 
     outState = ReadU16BE(resp, 9);
     AnsiString msg = "ProfileState(16568)=" + IntToStr((int)outState);
-    SockTracer::Log(TraceKind::Note, msg.c_str());
+	Logger::Log(LogType::Note, msg.c_str());
     return true;
 }

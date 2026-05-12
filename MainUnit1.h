@@ -14,6 +14,8 @@
 #include <Menus.hpp>
 #include <Dialogs.hpp>
 #include <Mask.hpp>
+#include "DebugFileLogger.h"
+
 //---------------------------------------------------------------------------
 
 
@@ -289,7 +291,6 @@ private:
 	TShape    *TcLED;
 	TClientSocket *PcSocket;
 	TClientSocket *TcSocket;
-
  
 	void __fastcall PcSocketConnect(TObject *Sender, TCustomWinSocket *Socket);
 	void __fastcall PcSocketDisconnect(TObject *Sender, TCustomWinSocket *Socket);
@@ -300,7 +301,6 @@ private:
 	void __fastcall TcSocketDisconnect(TObject *Sender, TCustomWinSocket *Socket);
 	void __fastcall TcSocketRead(TObject *Sender, TCustomWinSocket *Socket);
 	void __fastcall TcSocketError(TObject *Sender, TCustomWinSocket *Socket, TErrorEvent ErrorEvent, int &ErrorCode);
-
 
   //int __fastcall ScpiSendLine(TCustomWinSocket* sock, const AnsiString& cmd);
 
@@ -313,7 +313,8 @@ private:
   bool __fastcall NoParam(char *ptr);
   bool __fastcall ParseLine();
   void __fastcall WaitCmd(int Seconds);
-  void __fastcall PressureGet();
+  void __fastcall WaitForTargetPressureToBeReached(int targetPressure, int maxSecondsToWait);
+	void __fastcall PressureGet();
   void __fastcall PressureStop();
   void __fastcall PressureInit();
   bool __fastcall PressureSet(float pressure);

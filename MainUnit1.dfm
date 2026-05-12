@@ -774,7 +774,7 @@ object Form1: TForm1
       end>
   end
   object PageControl1: TPageControl
-    Left = 2
+    Left = -4
     Top = 8
     Width = 720
     Height = 337
@@ -1631,7 +1631,7 @@ object Form1: TForm1
   end
   object ButtonStartScript: TButton
     Left = 43
-    Top = 370
+    Top = 363
     Width = 75
     Height = 25
     Caption = 'Start Script'

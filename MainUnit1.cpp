@@ -1,7 +1,10 @@
 ﻿#include <vcl.h>
 #include <sysdefs.h>
+#include <stdarg.h>
 #include <time.h>
 #include <sysutils.hpp>
+#include <Windows.h>
+#include <memory>
 #include <math.h>
 #include <dos.h>
 #include <stdio.h>
@@ -21,7 +24,7 @@
 #include <System.Diagnostics.hpp>
 #include <Vcl.Forms.hpp>
 #include <System.SysUtils.hpp> // ExtractFilePath
-#include "SockTrace.h"         // SockTracer
+#include "Logger.h"         // Logger
 
 #include <IdTCPClient.hpp>
 #include <IdGlobal.hpp>
@@ -29,11 +32,11 @@
 #include <IdIOHandlerStack.hpp>
 #include <Winapi.WinSock2.hpp>
 #include <Windows.hpp>
+#include <psapi.h>  // used to log memory usage
 
 #include "ModbusSupport.h"
 
-#include <Windows.h>
-#include <memory>
+#include "DebugFileLogger.h"
 
 
 //---------------------------------------------------------------------------
@@ -49,6 +52,14 @@ static constexpr int RCV_STR_LEN = 256;
 // 4 Digi Servers of 16 channels each
 char RcvStr[DIGI_COMMAND_CHANNELS][RCV_STR_LEN];
 int RcvIndex[DIGI_COMMAND_CHANNELS];
+
+// After we send the sensor a  "CMD110 1", we need to verify that
+// the sensor is now sending up calibrated pressures (as a float)
+#define CAL_PRESSURE_DONT_CARE 100
+#define CAL_PRESSURE_NEEDS_VALIDATION 101
+#define CAL_PRESSURE_VALIDATED 102
+
+int CheckForCalibratedPressures[DIGI_COMMAND_CHANNELS];
 
 // Temperature Controller
 char TcRcvStr[RCV_STR_LEN];
@@ -150,6 +161,8 @@ const int ninthLedLeft = ledLeft  + colSpacing * 8;
 ////////////////////////////////////////////////////////////////////
 
 // Forward definitions
+void SafeFormat(char* dest, size_t destSize, const char* fmt, ...);
+void TrimInPlace(char* s);
 
 ////////////////////////////////////////////////////////////////////
 static void CenterEditText(TEdit* ed);
@@ -157,6 +170,8 @@ static void CenterMaskEditText(TMaskEdit* ed);  // Forward definitions
 static void CenterSingleLineTEdit(TEdit* ed);
 static void CenterSingleLineTMaskEdit(TMaskEdit* ed);
 static bool TryParseSensPres(const char* line, double& outValue);
+static void LogMemoryUsage();
+static bool IsValidFloat(const char* text);
 
 const int HeaterControlActionHeat = 36;
 const int HeaterControlActionOff = 62;
@@ -286,7 +301,9 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 		SocketLED[i]->Left = ledLeft + colSpacing  * (i/8);
     SocketLED[i]->Top = 36 + (i%8)*16;
 
-    /*
+		CheckForCalibratedPressures[i] = CAL_PRESSURE_DONT_CARE;
+
+		/*
     CommLabel[i] = new TLabel(this);
     CommLabel[i]->Parent = TabSheetSN;
     CommLabel[i]->Caption = "Disconnected";
@@ -335,8 +352,8 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 	TcBox->Width   = 55;                  // optional
 
 	BaroFileSaved = true;
-  PortMonCount = 0;
-  Application->OnMessage = AppMessage;
+	PortMonCount = 0;
+	Application->OnMessage = AppMessage;
 
 	// ---- Temp Control socket (separate from Digi sockets) ----
 	TcSocket = new TClientSocket(this);
@@ -362,23 +379,23 @@ __fastcall TForm1::TForm1(TComponent* Owner)
 
 void __fastcall TForm1::FormClose(TObject *Sender, TCloseAction &Action)
 {
-  int i;
+	int i;
 
-  SockTracer::StopRealtimeFile();
+	Logger::StopRealtimeFile();
 
-  if(RunFlag) {
-    RunFlag = false;
-    Screen->Cursor = crHourGlass;
-    Sleep(2000);
-    Screen->Cursor = crDefault;
+	if(RunFlag) {
+		RunFlag = false;
+		Screen->Cursor = crHourGlass;
+		Sleep(2000);
+		Screen->Cursor = crDefault;
 	}
 
 
 	for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
 		if(Active(CommSocket[i])) CommSocket[i]->Active = false;
-    delete CommSocket[i];
+		delete CommSocket[i];
 		delete CommBox[i];
-    delete SocketLED[i];
+		delete SocketLED[i];
 
 		delete EditSerialNum[i];
 		delete LabelSerialNum[i];
@@ -386,9 +403,11 @@ void __fastcall TForm1::FormClose(TObject *Sender, TCloseAction &Action)
 
 	// Clean up TC socket
 	if (Active(TcSocket)) {
+		Logger::Log(LogType::Note, "TC SOCKET CLOSED");
 		TcSocket->Active = false;
 	}
 	if (Active(PcSocket)) {
+		Logger::Log(LogType::Note, "PC SOCKET CLOSED");
 		PcSocket->Active = false;
 	}
 	delete PcBox;
@@ -396,49 +415,71 @@ void __fastcall TForm1::FormClose(TObject *Sender, TCloseAction &Action)
 	delete PcLED;
 	delete TcLED;
 
-  TIniFile *pIniFile = new TIniFile(IniDir+"\\BAROCAL.INI");
-  pIniFile->WriteString("Settings","WorkingDir", WorkingDir);
-  pIniFile->WriteString("Settings","ScriptFile", ScriptFileName);
+	TIniFile *pIniFile = new TIniFile(IniDir+"\\BAROCAL.INI");
+	pIniFile->WriteString("Settings","WorkingDir", WorkingDir);
+	pIniFile->WriteString("Settings","ScriptFile", ScriptFileName);
 
-  pIniFile->WriteString("Settings","Script302StdFile", Script302StdFile);
-  pIniFile->WriteString("Settings","Script202StdFile", Script202StdFile);
+	pIniFile->WriteString("Settings","Script302StdFile", Script302StdFile);
+	pIniFile->WriteString("Settings","Script202StdFile", Script202StdFile);
 
 	pIniFile->WriteString("Settings","IPAddr1", EditAddr1->Text);
-  pIniFile->WriteString("Settings","IPAddr2", EditAddr2->Text);
-  pIniFile->WriteString("Settings","IPAddr3", EditAddr3->Text);
-  pIniFile->WriteString("Settings","IPAddr4", EditAddr4->Text);
+	pIniFile->WriteString("Settings","IPAddr2", EditAddr2->Text);
+	pIniFile->WriteString("Settings","IPAddr3", EditAddr3->Text);
+	pIniFile->WriteString("Settings","IPAddr4", EditAddr4->Text);
 	pIniFile->WriteString("Settings","IPAddrPC", EditAddrPC->Text);
 	pIniFile->WriteString("Settings","IPAddrTC", EditAddrTC->Text);
 	pIniFile->WriteString("Settings","TimeLimit", CSpinEditTargetPressureTimeLimit->Value);
 
-  //pIniFile->WriteString("Settings","1000RpmSpeed", Edit1000RpmSpeed->Text);
-  //pIniFile->WriteString("Settings","2500RpmSpeed", Edit2500RpmSpeed->Text);
-  //pIniFile->WriteString("Settings","Email", EditEmailAddr->Text);
-  //pIniFile->WriteInteger("Settings","DataShape", ShapeType);
+	//pIniFile->WriteString("Settings","1000RpmSpeed", Edit1000RpmSpeed->Text);
+	//pIniFile->WriteString("Settings","2500RpmSpeed", Edit2500RpmSpeed->Text);
+	//pIniFile->WriteString("Settings","Email", EditEmailAddr->Text);
+	//pIniFile->WriteInteger("Settings","DataShape", ShapeType);
 
-  delete pIniFile;
+	delete pIniFile;
 
-  if(hComm) {
+	if(hComm) {
 		PurgeComm(hComm, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
-	  CloseHandle(hComm);
-  }
-
-
+		CloseHandle(hComm);
+	}
 }
 
 //---------------------------------------------------------------------------
+// SocketRead
+//
+// This routine is called automatically by the VCL socket component when
+// data is available to read on a connected socket (OnRead event).
+//
+// IMPORTANT BEHAVIOR:
+// - TCP is a byte stream (NOT message-based).
+// - Devices may send partial lines, full lines, or multiple lines at once.
+// - This routine intentionally reads ONE BYTE AT A TIME from the socket buffer.
+// - A complete message is defined as a string terminated by CR (ASCII 13).
+//
+// DATA FLOW:
+// - Characters are accumulated into RcvStr[i] using RcvIndex[i].
+// - When CR is received, the string is NULL-terminated and processed.
+// - Each socket corresponds to one of 64 barometer channels.
+//
+// ASSUMPTIONS:
+// - Devices send ASCII text terminated by CR.
+// - '>' characters are ignored (likely prompt characters).
+// - LF (ASCII 10) is ignored.
+//
+//---------------------------------------------------------------------------
 
-void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket) {
-	char ch, *ptr, str[100];
-	float NewPressure;
-	AnsiString TimeStr;
+void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket)
+{
+	char ch;                  // incoming character
+	char str[256];            // temp buffer for logging
 
-	// for logging
-	AnsiString addr;
-	int port;
-	char endPoint[128];
-
+	//---------------------------------------------------------------------------
+	// Determine which of the 64 channels this socket belongs to
+	// Each Digi server provides 16 ports:
+	//   Base: RemotePort - 2101 gives index 0–15
+	//   Additional servers offset by +16, +32, +48
+	//---------------------------------------------------------------------------
 	int i = Socket->RemotePort - 2101;
+
 	if (Socket->RemoteAddress == EditAddr2->Text)
 	{
 			i += 16;
@@ -451,107 +492,217 @@ void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket) {
 	{
 			i += 48;
 	}
+
+	//---------------------------------------------------------------
+	// Validate channel index BEFORE using it anywhere
+	//---------------------------------------------------------------
+	if (i < 0 || i >= DIGI_COMMAND_CHANNELS)
+	{
+			AnsiString remoteAddr = Socket->RemoteAddress;
+
+			SafeFormat(str, sizeof(str),
+								"ERROR: Invalid channel index i=%d (addr=%s port=%d)",
+								i,
+								remoteAddr.c_str(),
+								Socket->RemotePort);
+			LogError(str);
+			return;   // Do NOT continue — would corrupt memory
+	}
+	// Now it's safe to use i
 	NoActivityTime[i] = 0;
 
-	// !ATTN! COMMENT THESE TWO LINES OUT
-	//sprintf(str, "%s %i", Socket->RemoteAddress.c_str(), i);
-	//MemoMonitor->Lines->Add(str);
-
-	int PortMon = CSpinEditPortMon->Value - 1;
+	// Monitor settings
+	int PortMon   = CSpinEditPortMon->Value - 1;
 	int PortT1Chk = CSpinEditPortT1Chk->Value - 1;
 
-	while(Socket->ReceiveBuf(&ch, 1) != -1) {
-		switch(ch) {
+	//---------------------------------------------------------------------------
+	// Read all available data from socket, one byte at a time
+	//---------------------------------------------------------------------------
+	while (Socket->ReceiveBuf(&ch, 1) != -1)
+	{
+		switch (ch)
+		{
 			case '>':
+				// Ignore prompt character (device-specific)
 				break;
-			case 13:
-				//Terminate string with NULL
-				RcvStr[i][RcvIndex[i]] = 0;
+
+			case 13: // CR = end of message
+			{
+				//-------------------------------------------------------------------
+				// End of line detected — terminate string and process it
+				//-------------------------------------------------------------------
+
+				// Safety check before null-termination
+				if (RcvIndex[i] >= RCV_STR_LEN)
+				{
+						SafeFormat(str, sizeof(str),
+											"ERROR: RcvIndex out of bounds on port %d. Index=%d (max=%d). Forcing clamp.",
+											i + 1,
+											RcvIndex[i],
+											RCV_STR_LEN - 1);
+						LogError(str);
+						RcvIndex[i] = RCV_STR_LEN - 1;  // clamp
+				}
+				RcvStr[i][RcvIndex[i]] = '\0';
+
+				// Remove leading/trailing spaces and tabs before processing
+				TrimInPlace(&RcvStr[i][0]);
+
+				// Log cleaned received string
 				LogRx(Socket, &RcvStr[i][0]);
 
-				// BAROMETERS
-				if(i == PortT1Chk && TableChkFlag) {
+				//-------------------------------------------------------------------
+				// Optional display in main memo (Table Check mode)
+				//-------------------------------------------------------------------
+				if (i == PortT1Chk && TableChkFlag)
+				{
 					MemoMain->Lines->Add(&RcvStr[i][0]);
+
+					SafeFormat(str, sizeof(str), "MemoMain:%s", &RcvStr[i][0]);
 				}
 
-				if((i == PortMon) && CheckBoxPortMonEnable->Checked) {
-					sprintf(str,"%02i: %s", i+1, &RcvStr[i][0]);
+				//-------------------------------------------------------------------
+				// Optional display in monitor window
+				//-------------------------------------------------------------------
+				if ((i == PortMon) && CheckBoxPortMonEnable->Checked)
+				{
+					SafeFormat(str, sizeof(str), "%02i: %s", i + 1, &RcvStr[i][0]);
 					MemoMonitor->Lines->Add(str);
 				}
-				if (BaroReadFlag[i]) {
-					// guard BEFORE any ReadBaroArray[ReadBaroIndex] access ***
-					if (ReadBaroIndex >= READ_BARO_ARRAY_MAX) {
-						StatusBar1->Panels->Items[2]->Text = "ReadBaroIndex at limit.";
-						sprintf(str, "ReadBaroIndex is %d. Limit is %d.", ReadBaroIndex, READ_BARO_ARRAY_MAX);
-						LogError(str);
 
-						// Keep behavior sane: we consumed the flag but can't store
+				//-------------------------------------------------------------------
+				// Process barometer read if requested
+				//-------------------------------------------------------------------
+				if (BaroReadFlag[i])
+				{
+					//-----------------------------------------------------------------
+					// Guard against array overflow BEFORE accessing array
+					//-----------------------------------------------------------------
+					if (ReadBaroIndex >= READ_BARO_ARRAY_MAX)
+					{
+						StatusBar1->Panels->Items[2]->Text = "ReadBaroIndex at limit.";
+
+						SafeFormat(str, sizeof(str), "ReadBaroIndex is %d. Limit is %d.",	ReadBaroIndex, READ_BARO_ARRAY_MAX);
+						LogError(str);
+						Logger::Log(LogType::Note, str);
 						BaroReadFlag[i] = false;
-						return;   // If you're inside a loop and 'return' is wrong, use: continue; or break;
+						return;
 					}
-					// SET PORTNUM TO NONZERO TO VALIDATE PORT
-					ReadBaroArray[ReadBaroIndex].PortNum = i + 1;
-					ReadBaroArray[ReadBaroIndex].RefTemp = CurrentTemp;
+
+					//-----------------------------------------------------------------
+					// Store metadata for this reading
+					//-----------------------------------------------------------------
+					ReadBaroArray[ReadBaroIndex].PortNum     = i + 1;
+					ReadBaroArray[ReadBaroIndex].RefTemp     = CurrentTemp;
 					ReadBaroArray[ReadBaroIndex].RefPressure = CurrentPressure;
 
-					if (ModeVal == RUN_MODE) {
-						try {
-							ReadBaroArray[ReadBaroIndex].Pressure = atof(&RcvStr[i][0]);
+					//-----------------------------------------------------------------
+					// RUN MODE: parse numeric pressure value
+					//-----------------------------------------------------------------
+					if (ModeVal == RUN_MODE)
+					{
+						char* endPtr = nullptr;
+						char* buf = &RcvStr[i][0];
+						double val = strtod(buf, &endPtr);
 
-							if (ReadBaroIndex < READ_BARO_ARRAY_MAX) {
-									++ReadBaroIndex;
+						// Has the sensor switched to Calibrated Data Mode Yet
+						if (CheckForCalibratedPressures[i] == CAL_PRESSURE_NEEDS_VALIDATION)
+						{
+							// Yes - validate
+							if ((endPtr != buf) && (*endPtr == '\0') && (strchr(buf, '.') != nullptr))
+							{
+								// Valid floating point number WITH decimal point
+								CheckForCalibratedPressures[i] = CAL_PRESSURE_VALIDATED;
+								ReadBaroArray[ReadBaroIndex].Pressure = val;
 							}
-							else  {
-									StatusBar1->Panels->Items[2]->Text = "ReadBaroIndex at limit.";
-									sprintf(str, "ReadBaroIndex is %d. Limit is %d.", ReadBaroIndex, READ_BARO_ARRAY_MAX);
-									LogError(str);
-							}
-						}
-						catch (...) {
-							ReadBaroArray[ReadBaroIndex].Pressure = 0.0;
-							sprintf(str,"RUN MODE. Floating point conversion err on port %d (%0.1f %.2f", i+1, CurrentTemp, CurrentPressure);
-							LogError(str);
-						}
-					}
-					else {
-						try {
-							// prevent overflow (CaptureStr is char[20])
-							strncpy(ReadBaroArray[ReadBaroIndex].CaptureStr, &RcvStr[i][0], sizeof(ReadBaroArray[ReadBaroIndex].CaptureStr) - 1);
-							ReadBaroArray[ReadBaroIndex].CaptureStr[sizeof(ReadBaroArray[ReadBaroIndex].CaptureStr) - 1] = '\0';
-
-							if (ReadBaroIndex < READ_BARO_ARRAY_MAX) ++ReadBaroIndex;
-							else {
-								StatusBar1->Panels->Items[2]->Text = "ReadBaroIndex at limit.";
-								sprintf(str,"ReadBaroIndex is %d. Limit is %d.", ReadBaroIndex, READ_BARO_ARRAY_MAX); // (I removed the stray ] )
+							else
+							{
+								// Invalid, or no decimal point present
+								SafeFormat(str, sizeof(str), "ERROR: Invalid Calibrated Float data on port %d:  %s", i + 1, &RcvStr[i][0]);
 								LogError(str);
+								ReadBaroArray[ReadBaroIndex].Pressure = 0.0;
 							}
 						}
-						catch (...) 						{
-							sprintf(str,"CAPTURE MODE. Error reading string.(%0.1f %.2f", CurrentTemp, CurrentPressure);
-							LogError(str);
+						else
+						{
+							// No RAW mode - just make sure it's a number
+							if ((endPtr == buf) || (*endPtr != '\0'))
+							{
+								SafeFormat(str, sizeof(str), "ERROR: Invalid numeric data on port %d: '%s'", i + 1, &RcvStr[i][0]);
+								LogError(str);
+								ReadBaroArray[ReadBaroIndex].Pressure = 0.0;
+							}
+							else
+							{
+								ReadBaroArray[ReadBaroIndex].Pressure = val;
+							}
 						}
+						++ReadBaroIndex;
 					}
+					else
+					{
+						//-----------------------------------------------------------------
+						// CAPTURE MODE: store raw string
+						//-----------------------------------------------------------------
+						SafeFormat(ReadBaroArray[ReadBaroIndex].CaptureStr, CAPTURE_STR_LEN, "%s", &RcvStr[i][0]);
+						++ReadBaroIndex;
+					}
+					AnsiString serial = EditSerialNum[i]->Text;
 
-					AnsiString serial = EditSerialNum[i]->Text;   // converts UnicodeString -> AnsiString
-
-					sprintf(str, "%02d %s %06.2f %03.1f %s",i+1,serial.c_str(),CurrentPressure,CurrentTemp,&RcvStr[i][0]);
-
-					MemoBaroReadMon->Lines->Add(str);
+					SafeFormat(str, sizeof(str), "%02d %s %06.2f %03.1f %s",
+							i + 1, serial.c_str(),
+							CurrentPressure, CurrentTemp,
+							&RcvStr[i][0]);
+					//-----------------------------------------------------------------
+					// if valid, Save the reading for each Baro
+					//-----------------------------------------------------------------
+					if (IsValidFloat(&RcvStr[i][0]))
+					{
+						MemoBaroReadMon->Lines->Add(str);
+					}
+					else
+					{
+						SafeFormat(str, sizeof(str), "BaroErr: %02d %s %06.2f %03.1f %s",
+								i + 1, serial.c_str(),
+								CurrentPressure, CurrentTemp,
+								&RcvStr[i][0]);
+						LogError(str);
+					}
 					BaroReadFlag[i] = false;
 				}
-				// Reset the RcvIndex
+
+				//-------------------------------------------------------------------
+				// Reset buffer index for next line
+				//-------------------------------------------------------------------
 				RcvIndex[i] = 0;
 				break;
+			}
+
 			case 10:
+				// Ignore LF (line feed)
 				break;
+
+
 			default:
-				try {
-					RcvStr[i][RcvIndex[i]] = ch;
-					if(RcvIndex[i] < 998) ++RcvIndex[i];
-				}
-				catch (...) {
-					LogError("SOCKET READ overflow");
-				}
+					// Append character to current line buffer.
+					// Leave room for the terminating NULL.
+					if (RcvIndex[i] < RCV_STR_LEN - 1) {
+							RcvStr[i][RcvIndex[i]] = ch;
+							++RcvIndex[i];
+					}
+					else {
+							// Buffer is full before CR was received.
+							// Terminate what we have, log it, then reset the buffer.
+							RcvStr[i][RCV_STR_LEN - 1] = '\0';
+
+							SafeFormat(str, sizeof(str),
+												"ERROR: RcvStr overflow on port %d. Partial line: %s",
+												i + 1,
+												&RcvStr[i][0]);
+							LogError(str);
+							RcvIndex[i] = 0;
+					}
+					break;
 		}
 	}
 }
@@ -562,151 +713,164 @@ void __fastcall TForm1::SocketRead(TObject *Sender, TCustomWinSocket *Socket) {
 void __fastcall TForm1::TcSocketRead(TObject *Sender, TCustomWinSocket *Socket)
 {
 	char ch;
-	char str[32];
+	char str[256];
 
-	// Read the byte sent from the Temp Controller
 	while (Socket->ReceiveBuf(&ch, 1) != -1)
 	{
-		// Have we reached the end of the line sent
-		if (ch == 13 || ch == 10) // CR or LF ends a line
+		if ((ch == 13) || (ch == 10)) // CR or LF ends a line
 		{
-			//  Yes - Is there any data in the receive buffer
 			if (TcRcvIndex > 0)
 			{
-				// Yes - terminate the line with a \0
-				TcRcvStr[TcRcvIndex] = 0;
+				if (TcRcvIndex >= RCV_STR_LEN)
+				{
+					TcRcvIndex = RCV_STR_LEN - 1;
+				}
 
-				// Log the command
+				TcRcvStr[TcRcvIndex] = '\0';
+
+				TrimInPlace(TcRcvStr);
+
 				LogRx(Socket, TcRcvStr);
 
-				// Update the GUI with the current temperature
-				// TODO FIX HARDCODED UNITS - KPD
-				CurrentTemp = atof(TcRcvStr);
-				sprintf(str,"%0.1f °C", CurrentTemp);
-				LabelTemperature->Caption = str;
-				// Reset our index so we are ready to receive the next msg from TC
+				char* endPtr = nullptr;
+				double val = strtod(TcRcvStr, &endPtr);
+
+				if ((endPtr == TcRcvStr) || (*endPtr != '\0'))
+				{
+					SafeFormat(str, sizeof(str), "ERROR: Invalid temperature data from TC: '%s'", TcRcvStr);
+				}
+				else
+				{
+					CurrentTemp = val;
+
+					// TODO FIX HARDCODED UNITS - KPD
+					SafeFormat(str, sizeof(str), "%0.1f °C", CurrentTemp);
+					LabelTemperature->Caption = str;
+				}
+
 				TcRcvIndex = 0;
 			}
-			// Keep waiting for another response from TC
+
 			continue;
 		}
-		// Character was read that was not the end of response
-		// Don't overrun buffer
+
 		if (TcRcvIndex < RCV_STR_LEN - 1)
 		{
-			// Store char into response buffer
-			TcRcvStr[TcRcvIndex++] = ch;
+			TcRcvStr[TcRcvIndex] = ch;
+			++TcRcvIndex;
 		}
 		else
 		{
-			// log the issue
-			LogRx(Socket, "TEMP CONTROL RECEIVE BUFFER OVERRUBN\n");
+			TcRcvStr[RCV_STR_LEN - 1] = '\0';
 
-			// Make sure the overflowing buffer is terminated
-			TcRcvStr[RCV_STR_LEN - 1] = 0;
-
-			// Log whatever is in the buffer that's overflowed
+			LogError("TEMP CONTROL RECEIVE BUFFER OVERRUN");
 			LogRx(Socket, TcRcvStr);
-
-			// overflow: reset
 			TcRcvIndex = 0;
 		}
 	}
 }
+
+
 //---------------------------------------------------------------------------
 
 
 void __fastcall TForm1::PcSocketRead(TObject *Sender, TCustomWinSocket *Socket)
 {
-		char ch;
-		char str[32];
+	char ch;
+	char str[256];
 
-		// Read the byte sent from the Pressure Controller
-		while (Socket->ReceiveBuf(&ch, 1) != -1)
+	while (Socket->ReceiveBuf(&ch, 1) != -1)
+	{
+		if ((ch == 13) || (ch == 10)) // CR or LF ends a line
 		{
-				// Have we reached the end of the line sent
-				if (ch == 13 || ch == 10) // CR or LF ends a line
+				if (PcRcvIndex > 0)
 				{
-						//  Yes - Is there any data in the receive buffer
-						if (PcRcvIndex > 0)
+						if (PcRcvIndex >= RCV_STR_LEN)
 						{
-								// Yes - terminate the line with a \0
-								PcRcvStr[PcRcvIndex] = 0;
-
-								// LOG RX (same mechanism as Digi)
-								LogRx(Socket, PcRcvStr);
-
-								// PRESSURE CONTROLLER
-								double pres = 0.0;
-								if (TryParseSensPres(PcRcvStr, pres))
-								{
-                    CurrentPressure = pres;
-                    PressureReadingReady = true;
-										sprintf(str, "%0.2f", pres);
-										LabelPressure->Caption = str;
-								}
-								else
-								{
-										// Unknown response for now – log it or ignore
-										LogRx(Socket, "UNKNOWN PRESSURE CONTROLLER RESPONSE:");
-								}
-								PcRcvIndex = 0;
+								PcRcvIndex = RCV_STR_LEN - 1;
 						}
-						continue;
+
+						PcRcvStr[PcRcvIndex] = '\0';
+
+						TrimInPlace(PcRcvStr);
+
+						LogRx(Socket, PcRcvStr);
+
+						double pres = 0.0;
+
+						if (TryParseSensPres(PcRcvStr, pres))
+						{
+								CurrentPressure = pres;
+								PressureReadingReady = true;
+
+								SafeFormat(str, sizeof(str), "%0.2f", pres);
+								LabelPressure->Caption = str;
+						}
+						else
+						{
+								AnsiString remoteAddr = Socket->RemoteAddress;
+
+								SafeFormat(str, sizeof(str),
+										"ERROR: PC parse failed addr=%s port=%d Response='%s'",
+										remoteAddr.c_str(),
+										Socket->RemotePort,
+										PcRcvStr);
+
+								LogError(str);
+								Logger::Log(LogType::Note, str);
+						}
+
+						PcRcvIndex = 0;
 				}
-			// Character was read that was not the end of response
-			// Don't overrun buffer
-			if (PcRcvIndex < RCV_STR_LEN - 1)
-			{
-				// Store char into response buffer
-				PcRcvStr[PcRcvIndex++] = ch;
-			}
-			else
-			{
-				// log the issue
-				LogRx(Socket, "PRESSURE CONTROL RECEIVE BUFFER OVERRUN\n");
 
-				// Make sure the overflowing buffer is terminated
-				PcRcvStr[RCV_STR_LEN - 1] = 0;
-
-				// Log whatever is in the buffer that's overflowed
-				LogRx(Socket, PcRcvStr);
-
-				// overflow: reset
-				PcRcvIndex = 0;
-			}
+				continue;
 		}
+		if (PcRcvIndex < RCV_STR_LEN - 1)
+		{
+			PcRcvStr[PcRcvIndex] = ch;
+			++PcRcvIndex;
+		}
+		else
+		{
+			PcRcvStr[RCV_STR_LEN - 1] = '\0';
+			LogError("PRESSURE CONTROL RECEIVE BUFFER OVERRUN");
+			Logger::Log(LogType::Note, "PRESSURE CONTROL RECEIVE BUFFER OVERRUN");
+			LogRx(Socket, PcRcvStr);
+
+			PcRcvIndex = 0;
+		}
+	}
 }
 
 //---------------------------------------------------------------------------
 
 static bool TryParseSensPres(const char* line, double& outValue)
 {
-    if (!line) return false;
+		if (!line) return false;
 
-    // Expect prefix exactly
-    const char* prefix = ":SENS:PRES";
-    const size_t prefixLen = strlen(prefix);
+		// Expect prefix exactly
+		const char* prefix = ":SENS:PRES";
+		const size_t prefixLen = strlen(prefix);
 
-    if (strncmp(line, prefix, prefixLen) != 0)
-        return false;
+		if (strncmp(line, prefix, prefixLen) != 0)
+				return false;
 
-    const char* p = line + prefixLen;
+		const char* p = line + prefixLen;
 
-    // Skip whitespace (space/tab/etc.)
-    while (*p && isspace((unsigned char)*p))
-        ++p;
+		// Skip whitespace (space/tab/etc.)
+		while (*p && isspace((unsigned char)*p))
+				++p;
 
-    // Now p should point at the number
-    char* endp = nullptr;
-    double v = strtod(p, &endp);
+		// Now p should point at the number
+		char* endp = nullptr;
+		double v = strtod(p, &endp);
 
-    // strtod didn't parse anything
-    if (endp == p)
-        return false;
+		// strtod didn't parse anything
+		if (endp == p)
+				return false;
 
-    outValue = v;
-    return true;
+		outValue = v;
+		return true;
 }
 
 //---------------------------------------------------------------------------
@@ -726,7 +890,7 @@ void __fastcall TForm1::SocketConnect(TObject *Sender, TCustomWinSocket *Socket)
 		ButtonGetTable->Enabled = true;
 	}
 	sprintf(str, "Port %i Connected", i+1);
-	SockTracer::Log(TraceKind::Note, str);
+	Logger::Log(LogType::Note, str);
 }
 
 //---------------------------------------------------------------------------
@@ -746,7 +910,7 @@ void __fastcall TForm1::SocketDisconnect(TObject *Sender, TCustomWinSocket *Sock
     ButtonGetTable->Enabled = false;
   }
 	sprintf(str, "Port %i Disconnected", i+1);
-	SockTracer::Log(TraceKind::Note, str);
+	Logger::Log(LogType::Note, str);
 }
 
 //---------------------------------------------------------------------------
@@ -761,7 +925,7 @@ void __fastcall TForm1::PcSocketConnect(TObject *Sender, TCustomWinSocket *Socke
 	if (PcLED) {
 		PcLED->Brush->Color = clLime;
 	}
-	SockTracer::Log(TraceKind::Note, "PRESSURE CONTROLLER CONNECTED\n");
+	Logger::Log(LogType::Note, "PRESSURE CONTROLLER CONNECTED\n");
 }
 
 //---------------------------------------------------------------------------
@@ -771,19 +935,53 @@ void __fastcall TForm1::PcSocketDisconnect(TObject *Sender, TCustomWinSocket *So
 	if (PcLED) {
 		PcLED->Brush->Color = clRed;
 	}
-	SockTracer::Log(TraceKind::Note, "PRESSURE CONTROLLER DISCONNECTED\n");
+	Logger::Log(LogType::Note, "PRESSURE CONTROLLER DISCONNECTED\n");
 }
 
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::PcSocketError(TObject *Sender, TCustomWinSocket *Socket,
-	TErrorEvent ErrorEvent, int &ErrorCode)
+void __fastcall TForm1::PcSocketError(TObject *Sender,
+	TCustomWinSocket *Socket,
+	TErrorEvent ErrorEvent,
+	int &ErrorCode)
 {
 	if (PcLED) {
-	 PcLED->Brush->Color = clRed;
+		PcLED->Brush->Color = clRed;
 	}
+
+	const wchar_t* eventStr = L"Unknown";
+
+	switch (ErrorEvent)
+	{
+		case eeGeneral:    eventStr = L"General"; break;
+		case eeSend:       eventStr = L"Send"; break;
+		case eeReceive:    eventStr = L"Receive"; break;
+		case eeConnect:    eventStr = L"Connect"; break;
+		case eeDisconnect: eventStr = L"Disconnect"; break;
+		case eeAccept:     eventStr = L"Accept"; break;
+		case eeLookup:     eventStr = L"Lookup"; break;
+	}
+
+	String errMsg = SysErrorMessage(ErrorCode);
+
+	String msg = String().sprintf(
+		L"PRESSURE CONTROLLER SOCKET ERROR\r\n"
+		L"Event=%s\r\n"
+		L"Code=%d\r\n"
+		L"Message=%s\r\n"
+		L"Remote=%s:%d",
+		eventStr,
+		ErrorCode,
+		errMsg.c_str(),
+		Socket ? Socket->RemoteAddress.c_str() : L"",
+		Socket ? Socket->RemotePort : 0
+	);
+
+	Logger::Log(LogType::Note, AnsiString(msg).c_str());
+
+	Application->MessageBox(msg.c_str(), L"PC Socket Error", MB_OK);
+
 	ErrorCode = 0; // suppress exception dialog
-	SockTracer::Log(TraceKind::Note, "PRESSURE CONTROLLER CONNECTION ERROR\n");
 }
 
 //---------------------------------------------------------------------------
@@ -798,7 +996,7 @@ void __fastcall TForm1::TcSocketConnect(TObject *Sender, TCustomWinSocket *Socke
 		if (TcLED) {
 			TcLED->Brush->Color = clLime;
 		}
-		SockTracer::Log(TraceKind::Note, "TEMPERATURE CONTROLLER CONNECTED\n");
+		Logger::Log(LogType::Note, "TEMPERATURE CONTROLLER CONNECTED\n");
 }
 
 //---------------------------------------------------------------------------
@@ -808,26 +1006,59 @@ void __fastcall TForm1::TcSocketDisconnect(TObject *Sender, TCustomWinSocket *So
 	if (TcLED) {
 		TcLED->Brush->Color = clRed;
 	}
-	SockTracer::Log(TraceKind::Note, "TEMPERATURE CONTROLLER DISCONNECTED\n");
+	Logger::Log(LogType::Note, "TEMPERATURE CONTROLLER DISCONNECTED\n");
 }
 
 //---------------------------------------------------------------------------
 
-void __fastcall TForm1::TcSocketError(TObject *Sender, TCustomWinSocket *Socket,
-	TErrorEvent ErrorEvent, int &ErrorCode)
+void __fastcall TForm1::TcSocketError(TObject *Sender,
+	TCustomWinSocket *Socket,
+	TErrorEvent ErrorEvent,
+	int &ErrorCode)
 {
 	if (TcLED) {
 		TcLED->Brush->Color = clRed;
 	}
-	ErrorCode = 0; // suppress exception dialog
-	SockTracer::Log(TraceKind::Note, "TEMPERATURE CONTROLLER CONNECTION ERROR\n");
-}
 
+	const wchar_t* eventStr = L"Unknown";
+
+	switch (ErrorEvent)
+	{
+		case eeGeneral:    eventStr = L"General"; break;
+		case eeSend:       eventStr = L"Send"; break;
+		case eeReceive:    eventStr = L"Receive"; break;
+		case eeConnect:    eventStr = L"Connect"; break;
+		case eeDisconnect: eventStr = L"Disconnect"; break;
+		case eeAccept:     eventStr = L"Accept"; break;
+		case eeLookup:     eventStr = L"Lookup"; break;
+	}
+
+	String errMsg = SysErrorMessage(ErrorCode);
+
+	String msg = String().sprintf(
+		L"TEMPERATURE CONTROLLER SOCKET ERROR\r\n"
+		L"Event=%s\r\n"
+		L"Code=%d\r\n"
+		L"Message=%s\r\n"
+		L"Remote=%s:%d",
+		eventStr,
+		ErrorCode,
+		errMsg.c_str(),
+		Socket ? Socket->RemoteAddress.c_str() : L"",
+		Socket ? Socket->RemotePort : 0
+	);
+
+	Logger::Log(LogType::Note, AnsiString(msg).c_str());
+
+	Application->MessageBox(msg.c_str(), L"PC Socket Error", MB_OK);
+
+	ErrorCode = 0; // suppress exception dialog
+}
 //---------------------------------------------------------------------------
 
 void __fastcall TForm1::ButtonMonClearClick(TObject *Sender)
 {
-  MemoMonitor->Clear();
+	MemoMonitor->Clear();
 }
 //---------------------------------------------------------------------------
 
@@ -1151,73 +1382,110 @@ int __fastcall TForm1::FindSubIndex(char *SubLabelStr) {
     StrPLCopy(str, MemoScript->Lines->Strings[i],190);
     if(strcmp(SubLabelStr,str) == 0) return(i);
   }
-  return 0;
+	return 0;
 }
 
 //---------------------------------------------------------------------------
 void __fastcall TForm1::WaitCmd(int Seconds) {
-  DWORD RefTickCount, TickCount, ms;
-  char str[100];
-  bool GetFlag;
+	DWORD RefTickCount, TickCount, ms;
+	char str[100];
+	bool GetFlag;
 
-  RefTickCount = ::GetTickCount();
-  ms = 1000*(DWORD)Seconds;
 
-  ProgressBarCountDown->Max = ms;
+	// Save the starting Windows tick count.
+	RefTickCount = ::GetTickCount();
 
-  SkipFlag = false;
-  ButtonSkip->Enabled = true;
-  GetFlag = false;
+	// Convert wait time from seconds to milliseconds.
+	ms = 1000*(DWORD)Seconds;
 
-  while(1) {
-    if(PauseFlag) RefTickCount = ::GetTickCount() - TickCount;
+	// Set progress bar maximum to the total wait time.
+	ProgressBarCountDown->Max = ms;
 
-    TickCount = ::GetTickCount() - RefTickCount;
+		 // Allow user to skip this wait.
+	SkipFlag = false;
+	ButtonSkip->Enabled = true;
 
-    if(TickCount >= ms) break;
-    if(!RunFlag) break;
-    if(SkipFlag) break;
+	// Used to make sure PressureGet/TemperatureGet only run once
+	// during each matching 2-second interval.
+	GetFlag = false;
 
-    ProgressBarCountDown->Position = TickCount;
+	while(1) {
+		// If paused, adjust the reference tick count so the timer
+		// does not continue advancing while paused.
+		if(PauseFlag) {
+			RefTickCount = ::GetTickCount() - TickCount;
+		}
+		// Calculate elapsed wait time in milliseconds.
+		TickCount = ::GetTickCount() - RefTickCount;
 
-    sprintf(str,"%06.1f ", (float)TickCount/1000.0);
-    LabelWait->Caption = str;
+		// Stop waiting when requested time has elapsed.
+		if(TickCount >= ms) {
+			break;
+		}
+		// Stop waiting if the run was cancelled/stopped.
+		if(RunFlag == false) {
+			break;
+		}
+		// Stop waiting if user clicked Skip.
+		if(SkipFlag) {
+			break;
+		}
+		// Update progress bar.
+		ProgressBarCountDown->Position = TickCount;
 
-    if(TickCount > 2000 && TickCount/1000 % 2 == 0) {
-      if(!GetFlag) {
-        PressureGet();
-        TemperatureGet();
-        GetFlag = true;
+		// Display elapsed wait time in seconds.
+		sprintf(str,"%06.1f ", (float)TickCount/1000.0);
+		LabelWait->Caption = str;
+
+		// After the first 2 seconds, every even-numbered second,
+		// call PressureGet() and TemperatureGet().
+		//
+		// Example: at about 4 sec, 6 sec, 8 sec, etc.
+		//
+		// GetFlag prevents calling them repeatedly during the same second,
+		// since this loop runs about every 100 ms.
+		if(TickCount > 2000 && TickCount/1000 % 2 == 0) {
+			if(!GetFlag) {
+				// These calls should keep the pressure and temperature
+				// controller sockets active
+				PressureGet();
+				TemperatureGet();
+				GetFlag = true;
       }
-    }
-    else GetFlag = false;
+		} else {
+			// Reset the flag during odd-numbered seconds.
+			GetFlag = false;
+		}
+		// Let the VCL UI process button clicks, repainting, socket events, etc.
+		Application->ProcessMessages();
 
-    Application->ProcessMessages();
-    Sleep(100);
-  }
+		// Avoid spinning the CPU too hard.
+		Sleep(100);
+	}
 
-  LabelWait->Caption = "0000.0 ";
+	LabelWait->Caption = "0000.0 ";
   ProgressBarCountDown->Position = 0;
-  ButtonSkip->Enabled = false;
+	ButtonSkip->Enabled = false;
 
 }
+
 
 //---------------------------------------------------------------------------
 
 bool __fastcall TForm1::PressureSet(float pressure) {
-  char str[100];
-  DWORD RefTickCount1, RefTickCount2, TickCount, ms;
-  int ReadCount = 0;
-  int ProgressBarMax, ProgressBarPos;
+	char str[100];
+	DWORD RefTickCount1, RefTickCount2, TickCount, ms;
+	int ReadCount = 0;
+	int ProgressBarMax, ProgressBarPos;
 
-  // return true = error
-  // return false = OK
+	// return true = error
+	// return false = OK
 	sprintf(str, "PressureSet(%0.2f)", pressure);
-	SockTracer::Log(TraceKind::Note, str);
+	Logger::Log(LogType::Note, str);
 
   if(pressure < 300.0 || pressure > 1200.0) {
     LogError("ERROR: PressureSet(), Pressure Out of Range (300 to 1200).");
-    return true;
+		return true;
 	}
 
 
@@ -1236,7 +1504,7 @@ bool __fastcall TForm1::PressureSet(float pressure) {
 
       while(1) {
         Application->ProcessMessages();
-        PressureReadingReady = false;
+				PressureReadingReady = false;
 
         PressureGet();
 
@@ -1283,8 +1551,9 @@ bool __fastcall TForm1::PressureSet(float pressure) {
   else LogError("ERROR: PressureSet(), Pressure Comm Port Closed.");
 
   ProgressBarCountDown->Max =  ProgressBarMax;
-  ProgressBarCountDown->Position =  ProgressBarPos;
-  return true;
+	ProgressBarCountDown->Position =  ProgressBarPos;
+
+	return true;
 
 }
 //---------------------------------------------------------------------------
@@ -1368,8 +1637,10 @@ void __fastcall TForm1::TemperatureSet(float temperature) {
 			LogError("ERROR: Exception in TempSet().");
 		}
 	}
-	else LogError("ERROR: TempSet(), Temperature Comm Port Closed.");
-
+	else {
+		LogError("ERROR: TempSet(), Temperature Comm Port Closed.");
+	}
+	LogMemoryUsage();
 }
 
 //---------------------------------------------------------------------------
@@ -1471,14 +1742,14 @@ void __fastcall TForm1::TemperatureStopModbusTcp()
 								valueRead = (unsigned short)((reg[9] << 8) | reg[10]);
 						}
 						else {
-								SockTracer::Log(TraceKind::Note, "Readback response too short");
+								Logger::Log(LogType::Note, "Readback response too short");
 						}
 						sprintf(str, "Loop1 ControlMode readback= %i", valueRead);
-						SockTracer::Log(TraceKind::Note, str);
+						Logger::Log(LogType::Note, str);
 				}
 				// Set Loop1 Control Action = Off (62)
 				if (Modbus_WriteSingleRegister(client.get(), txId, UnitId, Loop1ControlActionAddr, HeaterControlActionOff) == false) {
-						SockTracer::Log(TraceKind::Note, "Failed to write Loop1 Control Action Off");
+						Logger::Log(LogType::Note, "Failed to write Loop1 Control Action Off");
 						return;
 				}
 				if (Modbus_ReadHoldingRegisters(client.get(), txId, UnitId, Loop1ControlActionAddr, 1, reg)) {
@@ -1488,10 +1759,10 @@ void __fastcall TForm1::TemperatureStopModbusTcp()
 								valueRead = (unsigned short)((reg[9] << 8) | reg[10]);
 						}
 						else {
-								SockTracer::Log(TraceKind::Note, "Readback response too short");
+								Logger::Log(LogType::Note, "Readback response too short");
 						}
 						sprintf(str, "Loop1 ControlAction readback= %i", valueRead);
-						SockTracer::Log(TraceKind::Note, str);
+						Logger::Log(LogType::Note, str);
 				}
 		}
 		__finally {
@@ -1539,7 +1810,7 @@ void __fastcall TForm1::TemperatureStartModbusTcp()
 				}
 				// Loop 1 Control Action = Heat (36)  (or Both (13) if you use cooling too)
 				if (Modbus_WriteSingleRegister(client.get(), txId, UnitId, Loop1ControlActionAddr, HeaterControlActionBoth) == false) {
-						SockTracer::Log(TraceKind::Note, "Failed to write Loop1 Control Action Heat");
+						Logger::Log(LogType::Note, "Failed to write Loop1 Control Action Heat");
 						return;
 				}
 				unsigned short valueRead = 0xFFFF;
@@ -1551,14 +1822,14 @@ void __fastcall TForm1::TemperatureStartModbusTcp()
 								valueRead = (unsigned short)((reg[9] << 8) | reg[10]);
 						}
 						else {
-								SockTracer::Log(TraceKind::Note, "Readback response too short");
+								Logger::Log(LogType::Note, "Readback response too short");
 						}
 						sprintf(str, "Loop1 ControlAction readback= %i", valueRead);
-						SockTracer::Log(TraceKind::Note, str);
+						Logger::Log(LogType::Note, str);
 				}
 				// Loop 1 Control Mode = Auto (10)
 				if (F4T_SetLoop1ControlModeAuto(client.get(), txId, UnitId, Loop1ControlModeAddr) == false) {
-						SockTracer::Log(TraceKind::Note, "Failed to write Loop1 Control Mode Auto");
+						Logger::Log(LogType::Note, "Failed to write Loop1 Control Mode Auto");
 						return;
 				}
 				if (Modbus_ReadHoldingRegisters(client.get(), txId, UnitId, Loop1ControlModeAddr, 1, reg)) {
@@ -1567,10 +1838,10 @@ void __fastcall TForm1::TemperatureStartModbusTcp()
 								valueRead = (unsigned short)((reg[9] << 8) | reg[10]);
 						}
 						else {
-								SockTracer::Log(TraceKind::Note, "Readback response too short");
+								Logger::Log(LogType::Note, "Readback response too short");
 						}
 						sprintf(str, "Loop1 ControlMode readback= %i", valueRead);
-						SockTracer::Log(TraceKind::Note, str);
+						Logger::Log(LogType::Note, str);
 				}
 		}
 		__finally {
@@ -1588,7 +1859,7 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
 	char LocStr[100];
 
 	sprintf(LocStr,"SendBaroMsg(%i, %s)", Port, str);
-	SockTracer::Log(TraceKind::Note, LocStr);
+	Logger::Log(LogType::Note, LocStr);
 
 	// Get a pointer to the script line
 	ptr = str;
@@ -1616,7 +1887,7 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
 					else {
 						sprintf(LocStr,"ERROR: BaroSendMsg(), Baro Comm Port %i Closed.", i+1);
 						// log to trace file not the in memory error log
-						SockTracer::Log(TraceKind::Note, LocStr);
+						Logger::Log(LogType::Note, LocStr);
 					}
 				}
 			}
@@ -1624,9 +1895,9 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
 			++ptr;
 
 			// If we should delay between chars
-			if(EnableBaroSendCharDelay->Checked) {
+			//if(EnableBaroSendCharDelay->Checked) {
 				Sleep(100);
-			}
+			//}
 		}
 		// If we should delay
 		if(EnableBaroSendCharDelay->Checked) {
@@ -1653,7 +1924,7 @@ void __fastcall TForm1::BaroSendMsg(int Port, const char *str) {
 					else {
 						sprintf(LocStr,"ERROR: BaroSendMsg(), Baro Comm Port %i Closed.", i+1);
 						// log to trace file not the in memory error log
-						SockTracer::Log(TraceKind::Note, LocStr);
+						Logger::Log(LogType::Note, LocStr);
 					}
 				}
 			}
@@ -1728,7 +1999,9 @@ void __fastcall TForm1::BaroRead(int Port){
 
   //MemoBaroReadMon->Lines->Add("*");
 
-  if(Port) BaroReadFlag[Port-1] = true;
+	if(Port) {
+		BaroReadFlag[Port-1] = true;
+	}
   else {
 		for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
 			BaroReadFlag[i] = true;
@@ -2149,6 +2422,10 @@ bool __fastcall TForm1::ParseLine() {
 					if(NoParam(ptr)) return true; //error
 					strcpy(CmdStr, ptr);
 
+					// save the cmd
+					char temp[16];
+					snprintf(temp, sizeof(temp), "%s", ptr);
+
 					ptr = strtok(NULL," \t");
 					if(NoParam(ptr)) return true; //error
 					Port = atoi(ptr);
@@ -2157,6 +2434,19 @@ bool __fastcall TForm1::ParseLine() {
 					if(NoParam(ptr)) return true; //error
 					WaitCount = atoi(ptr);
 
+					// Are we going to be putting 1 or all sensors in calibrated ASCII mode
+					if (strcmp(temp, "CMD110 1") == 0) {
+						 // yes - 1 channel or all
+						 if (Port == 0) {
+								// All
+								for (i = 0; i < DIGI_COMMAND_CHANNELS; i++) {
+									CheckForCalibratedPressures[i] = CAL_PRESSURE_NEEDS_VALIDATION;;
+								}
+						 } else {
+                // 1 channel adjust port # to index
+								CheckForCalibratedPressures[i-1] = CAL_PRESSURE_NEEDS_VALIDATION;
+						 }
+					}
 					sprintf(str,"BA C %s %d %d", CmdStr, Port, WaitCount);
 					MemoMain->Lines->Add(AStr + str);
 					BaroSendMsg(Port, CmdStr);
@@ -5009,7 +5299,7 @@ bool __fastcall TForm1::Active(TClientSocket* sock)
 	return false;
 }
 //---------------------------------------------------------------------------
-// CODE BEHIND - All TABS - Bottom Panel
+// CODE BEHIND - All TABS - Bottom Panel  SS1.0
 //---------------------------------------------------------------------------
 
 void __fastcall TForm1::ButtonStartScriptClick(TObject *Sender)
@@ -5038,6 +5328,7 @@ void __fastcall TForm1::ButtonStartScriptClick(TObject *Sender)
 		RunFlag = false;
 		return;
 	}
+	Logger::Log(LogType::Note, "Script Button Pressed");
 
 	SetScriptBar();
 	ScriptIndex = 0;
@@ -5094,6 +5385,11 @@ void __fastcall TForm1::ButtonStartScriptClick(TObject *Sender)
 
   RunFlag = true;
 
+	// At script start - CMD110 1 has not been set yet
+	// so no need to verify
+	for (i = 0; i < DIGI_COMMAND_CHANNELS; i++) {
+		CheckForCalibratedPressures[i] = CAL_PRESSURE_DONT_CARE;
+	}
 	// Since we turn Temperature Controller power off at the end of a run
 	// we need to turn it back on at the start of a run
 	TemperatureStartModbusTcp();
@@ -5107,7 +5403,7 @@ void __fastcall TForm1::ButtonStartScriptClick(TObject *Sender)
   while(RunFlag) {
     ProgressBarScript->Position = ProgressCount;
 
-    Application->ProcessMessages();
+		Application->ProcessMessages();
 
     if(!PauseFlag) {
       if(ParseLine())
@@ -5344,38 +5640,38 @@ void __fastcall TForm1::ButtonDeselectAllClick(TObject *Sender)
 
 void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
 {
-  int i;
+	int i;
 	char str[200];
 
 	char buff[64];
 
 	AnsiString a = Form1->Caption;  // LOG OUR APP NAME & VERSION
 	std::snprintf(buff, sizeof(buff), "%s", a.c_str());
-	SockTracer::Log(TraceKind::Note, buff);
+	Logger::Log(LogType::Note, buff);
 
 	a = EditAddr1->Text;          // UnicodeString -> AnsiString
 	std::snprintf(buff, sizeof(buff), "Addr1: %s", a.c_str());
-	SockTracer::Log(TraceKind::Note, buff);
+	Logger::Log(LogType::Note, buff);
 
 	a = EditAddr2->Text;          // UnicodeString -> AnsiString
 	std::snprintf(buff, sizeof(buff), "Addr2: %s", a.c_str());
-	SockTracer::Log(TraceKind::Note, buff);
+	Logger::Log(LogType::Note, buff);
 
 	a = EditAddr3->Text;          // UnicodeString -> AnsiString
 	std::snprintf(buff, sizeof(buff), "Addr3: %s", a.c_str());
-	SockTracer::Log(TraceKind::Note, buff);
+	Logger::Log(LogType::Note, buff);
 
 	a = EditAddr4->Text;          // UnicodeString -> AnsiString
 	std::snprintf(buff, sizeof(buff), "Addr4: %s", a.c_str());
-	SockTracer::Log(TraceKind::Note, buff);
+	Logger::Log(LogType::Note, buff);
 
 	a = EditAddrPC->Text;          // UnicodeString -> AnsiString
 	std::snprintf(buff, sizeof(buff), "AddrPC: %s", a.c_str());
-	SockTracer::Log(TraceKind::Note, buff);
+	Logger::Log(LogType::Note, buff);
 
 	a = EditAddrTC->Text;          // UnicodeString -> AnsiString
 	std::snprintf(buff, sizeof(buff), "AddrTC: %s", a.c_str());
-	SockTracer::Log(TraceKind::Note, buff);
+	Logger::Log(LogType::Note, buff);
 
 	for(i=0; i<DIGI_COMMAND_CHANNELS; i++) {
 
@@ -5413,8 +5709,10 @@ void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
 			TcSocket->Address = EditAddrTC->Text;
 			TcSocket->Port = 5025; // SCPI over TCP
 
-			if (Active(TcSocket)) TcSocket->Active = false;
-
+			if (Active(TcSocket)) {
+				Logger::Log(LogType::Note, "TC SOCKET CLOSED");
+				TcSocket->Active = false;
+			}
 			try {
 				TcSocket->Active = true;
 			}
@@ -5424,7 +5722,10 @@ void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
 			}
 		}
 		else {
-			if (Active(TcSocket)) TcSocket->Active = false;
+			if (Active(TcSocket)) {
+				Logger::Log(LogType::Note, "TC SOCKET CLOSED");
+				TcSocket->Active = false;
+			}
 			if (TcLED) TcLED->Brush->Color = clRed;
 		}
 	}
@@ -5439,8 +5740,10 @@ void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
 			PcSocket->Port = 5025; // SCPI over TCP
 
 			//SendTextLogged(sprintf("ButtonConnectClick() PcSocket->Port %d", PcSocket->Port));
-			if (Active(PcSocket)) PcSocket->Active = false;
-
+			if (Active(PcSocket)) {
+				Logger::Log(LogType::Note, "PC SOCKET CLOSED");
+				PcSocket->Active = false;
+			}
 			try {
 				//SendTextLogged("ButtonConnectClick() setting PcSocket->Active true\n");
 				PcSocket->Active = true;
@@ -5453,7 +5756,10 @@ void __fastcall TForm1::ButtonConnectClick(TObject *Sender)
 		}
 		else {
 			//SendTextLogged("ButtonConnectClick() PcBox->Checked is false\n");
-			if (Active(PcSocket)) PcSocket->Active = false;
+			if (Active(PcSocket)) {
+				Logger::Log(LogType::Note, "PC SOCKET CLOSED");
+				PcSocket->Active = false;
+			}
 			if (PcLED) PcLED->Brush->Color = clRed;
 		}
 	}
@@ -5500,12 +5806,18 @@ void __fastcall TForm1::ButtonDisconnectClick(TObject *Sender)
 	}
 
   // ---- Temperature Controller (TC) disconnect ----
-	if (Active(TcSocket)) TcSocket->Active = false;
+	if (Active(TcSocket)) {
+		Logger::Log(LogType::Note, "TC SOCKET CLOSED");
+		TcSocket->Active = false;
+	}
 	if (TcLED) TcLED->Brush->Color = clRed;
 	if (TcBox) TcBox->Enabled = true;
 
 	// ---- Pressure Controller (PC) disconnect ----
-	if (Active(PcSocket)) PcSocket->Active = false;
+	if (Active(PcSocket)) {
+		Logger::Log(LogType::Note, "PC SOCKET CLOSED");
+		PcSocket->Active = false;
+	}
 	if (PcLED) PcLED->Brush->Color = clRed;
 	if (PcBox) PcBox->Enabled = true;
 
@@ -5821,7 +6133,7 @@ static String GetExeFileVersion()
     if (!GetFileVersionInfoA(exeA.c_str(), handle, size, data.get()))
         return "";
 
-    VS_FIXEDFILEINFO* pffi = nullptr;
+		VS_FIXEDFILEINFO* pffi = nullptr;
     UINT len = 0;
     if (!VerQueryValueA(data.get(), "\\", (LPVOID*)&pffi, &len) || len == 0)
         return "";
@@ -5846,12 +6158,9 @@ static String GetExeFileVersion()
 		else {
 				Caption = "BarometerCalibrator  V0.0.0.0";
 		}
-		SockTracer::Init(5000, 256);
-		SockTracer::StartRealtimeFile(
-    (ExtractFilePath(Application->ExeName) + "socket_trace.txt").c_str(),
-    true);  // durableFlush: strongest crash survivability, slower I/O
-
-
+		Logger::Init(5000, 256);
+		Logger::StartRealtimeFile((ExtractFilePath(Application->ExeName) + "socket_trace.txt").c_str(), true);
+		// durableFlush: strongest crash survivability, slower I/O
 }
 
 //---------------------------------------------------------------------------
@@ -5872,3 +6181,99 @@ void __fastcall TForm1::FormShow(TObject *Sender)
 	//Application->ShowHint = true;
 }
 
+#pragma comment(lib, "psapi.lib")
+
+static void LogMemoryUsage()
+{
+    PROCESS_MEMORY_COUNTERS_EX pmc;
+
+    if (GetProcessMemoryInfo(GetCurrentProcess(),
+                             (PROCESS_MEMORY_COUNTERS*)&pmc,
+                             sizeof(pmc)))
+    {
+        char str[256];
+
+        sprintf(str,
+            "WorkingSet=%lu KB  PrivateUsage=%lu KB  Pagefile=%lu KB",
+            (unsigned long)(pmc.WorkingSetSize / 1024),
+            (unsigned long)(pmc.PrivateUsage / 1024),
+            (unsigned long)(pmc.PagefileUsage / 1024));
+
+				Logger::Log(LogType::Note, str);
+
+    }
+}
+
+void SafeFormat(char* dest, size_t destSize, const char* fmt, ...)
+{
+	if (dest == NULL || destSize == 0) {
+		return;
+	}
+
+	va_list args;
+	va_start(args, fmt);
+
+	_vsnprintf(dest, destSize, fmt, args);
+
+	va_end(args);
+
+	dest[destSize - 1] = '\0';
+}
+
+void TrimInPlace(char* s)
+{
+	if (s == NULL) {
+		return;
+	}
+
+	// Trim trailing spaces/tabs
+	int len = strlen(s);
+
+	while ((len > 0) && ((s[len - 1] == ' ') || (s[len - 1] == '\t'))) {
+		s[len - 1] = '\0';
+		--len;
+	}
+
+	// Trim leading spaces/tabs
+	char* start = s;
+
+	while ((*start == ' ') || (*start == '\t')) {
+		++start;
+	}
+
+	if (start != s) {
+		memmove(s, start, strlen(start) + 1);
+	}
+}
+
+#include <cstdlib>
+#include <cctype>
+
+static bool IsValidFloat(const char* text)
+{
+	if (text == nullptr)
+	{
+		return false;
+	}
+
+	char* endPtr = nullptr;
+
+	double val = strtod(text, &endPtr);
+
+	(void)val; // suppress unused warning if needed
+
+	// No conversion performed
+	if (endPtr == text)
+	{
+		return false;
+	}
+
+	// Skip trailing whitespace
+	while (*endPtr && isspace((unsigned char)*endPtr))
+	{
+		endPtr++;
+	}
+
+	// Must be at end of string
+	return (*endPtr == '\0');
+}
